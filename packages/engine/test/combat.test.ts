@@ -11,22 +11,8 @@ import {
   isExactKill,
   isPowerBlocked,
 } from '../src/combat.js';
-import { makePlayer, makeState } from './helpers.js';
+import { makePlayer, makeState, enemyCard, numberCard } from './helpers.js';
 import type { Card } from '../src/types.js';
-
-const enemyCard = (suit: Card['suit'], rank: 'J' | 'Q' | 'K'): Card => ({
-  id: `enemy-${suit}-${rank}`,
-  kind: 'enemy',
-  rank,
-  suit,
-});
-
-const numberCard = (suit: Card['suit'], rank: number): Card => ({
-  id: `${suit}-${rank}`,
-  kind: 'number',
-  rank: rank as Card['rank'],
-  suit,
-});
 
 describe('createEnemy', () => {
   it('usa los stats de [R-5]: J=10/20, Q=15/30, K=20/40', () => {

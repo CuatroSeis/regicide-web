@@ -5,10 +5,22 @@ import {
   mulberry32,
 } from '../src/deck.js';
 import { createEnemy } from '../src/combat.js';
-import type { GameState, Player } from '../src/types.js';
+import type { Card, GameState, Player } from '../src/types.js';
 
 export function makePlayer(id: string, overrides: Partial<Player> = {}): Player {
   return { id, maxHandSize: 8, hand: [], ...overrides };
+}
+
+export function numberCard(suit: Card['suit'], rank: number): Card {
+  return { id: `${suit}-${rank}`, kind: 'number', rank: rank as Card['rank'], suit };
+}
+
+export function aceCard(suit: Card['suit']): Card {
+  return { id: `ace-${suit}`, kind: 'ace', rank: 'A', suit };
+}
+
+export function enemyCard(suit: Card['suit'], rank: 'J' | 'Q' | 'K'): Card {
+  return { id: `enemy-${suit}-${rank}`, kind: 'enemy', rank, suit };
 }
 
 export function makeState(overrides: Partial<GameState> = {}): GameState {

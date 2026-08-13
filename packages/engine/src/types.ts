@@ -50,7 +50,7 @@ export interface RngState {
 
 export interface GameState {
   readonly players: Player[];
-  readonly currentPlayerIndex: number;
+  currentPlayerIndex: number;
   /** Tope del mazo = último elemento. */
   castleDeck: Card[];
   /** Tope del mazo = último elemento. */
