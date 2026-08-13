@@ -48,6 +48,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@regicide/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       framer-motion:
         specifier: ^13.1.0
         version: 13.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
