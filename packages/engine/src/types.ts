@@ -43,6 +43,11 @@ export type Phase = 'choose_action' | 'suffer_damage' | 'game_over';
 
 export type GameResult = 'victory' | 'defeat';
 
+/** Estado serializable del RNG por semilla (mulberry32). Determinista entre clientes. */
+export interface RngState {
+  a: number;
+}
+
 export interface GameState {
   readonly players: Player[];
   readonly currentPlayerIndex: number;
@@ -54,6 +59,8 @@ export interface GameState {
   /** Cartas jugadas contra el enemigo actual; van al descarte al derrotarlo [R-18(ii)]. */
   table: PlayedCard[];
   enemy: Enemy;
+  /** Estado del RNG para barajados en juego (ej. ♥ [R-11]). */
+  rngState: RngState;
   phase: Phase;
   gameOver: boolean;
   result: GameResult | null;

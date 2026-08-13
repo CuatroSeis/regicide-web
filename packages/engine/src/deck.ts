@@ -1,4 +1,4 @@
-import type { Card, FaceRank } from './types.js';
+import type { Card, FaceRank, RngState } from './types.js';
 import { NUMERIC_RANKS, SUITS } from './types.js';
 
 export type Rng = () => number;
@@ -9,15 +9,24 @@ export const MIN_PLAYERS = 1;
 /** Semilla por defecto usada cuando no se provee una (modo solo). */
 export const DEFAULT_SEED = 0x5eed;
 
+/** RNG serializable: genera el siguiente valor en [0, 1) mutando su estado. */
+export function nextRandom(state: RngState): number {
+  let a = state.a | 0;
+  a = (a + 0x6d2b79f5) | 0;
+  state.a = a;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+export function createRngState(seed: number): RngState {
+  return { a: seed >>> 0 };
+}
+
+/** RNG como closure (conveniente para construcción de mazos fuera del estado). */
 export function mulberry32(seed: number): Rng {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+  const state = createRngState(seed);
+  return () => nextRandom(state);
 }
 
 export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
@@ -29,6 +38,11 @@ export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
     result[j] = tmp;
   }
   return result;
+}
+
+/** Baraja consumiendo el RNG serializable del estado de partida. */
+export function shuffleFromState<T>(items: readonly T[], rngState: RngState): T[] {
+  return shuffle(items, () => nextRandom(rngState));
 }
 
 function numericCards(): Card[] {
