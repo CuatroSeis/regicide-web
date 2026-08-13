@@ -155,3 +155,249 @@ body {
 .rules-panel li {
   margin-bottom: 0.35rem;
 }
+
+/* ---- Tablero de juego ---- */
+
+.game-screen {
+  justify-content: flex-start;
+  padding-top: 1.5rem;
+}
+
+.game-header {
+  width: min(54rem, 94vw);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.meta {
+  font-size: 0.8rem;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+.enemy-panel {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(243, 234, 216, 0.14);
+  border-radius: 16px;
+  padding: 1rem 1.5rem;
+  width: min(54rem, 94vw);
+}
+
+.enemy-card {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+}
+
+.enemy-info {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.enemy-name {
+  font-size: 1.2rem;
+  color: var(--gold);
+  margin-bottom: 0.6rem;
+}
+
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.health-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  width: 3rem;
+}
+
+.health-bar {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(243, 234, 216, 0.15);
+}
+
+.health-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.health-value {
+  font-size: 0.85rem;
+  color: var(--ivory);
+  min-width: 4rem;
+  text-align: right;
+}
+
+.stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+.stat {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.immunity {
+  font-size: 0.8rem;
+  color: #c9a0a0;
+}
+
+.table-area,
+.hand-area {
+  width: min(54rem, 94vw);
+}
+
+.zone-label {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+  text-align: left;
+}
+
+.table-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 76px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(243, 234, 216, 0.12);
+  border-radius: 12px;
+  padding: 0.6rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.phase-hint {
+  width: min(54rem, 94vw);
+  font-size: 0.9rem;
+  color: var(--muted);
+  min-height: 1.4em;
+}
+
+.error-banner {
+  width: min(54rem, 94vw);
+  color: #ff8f8f;
+  background: rgba(209, 84, 84, 0.12);
+  border: 1px solid rgba(209, 84, 84, 0.4);
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.log-box {
+  width: min(54rem, 94vw);
+  text-align: left;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.log-line {
+  padding: 0.1rem 0;
+}
+
+/* ---- Overlay de fin de partida ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 12, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.5rem;
+}
+
+.overlay-card {
+  background: linear-gradient(180deg, var(--felt), var(--felt-dark));
+  border: 1px solid var(--gold);
+  border-radius: 20px;
+  padding: 2.25rem 2.5rem;
+  text-align: center;
+  max-width: 28rem;
+  box-shadow: 0 0 60px var(--card-glow);
+}
+
+.overlay-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.overlay-title {
+  color: var(--gold);
+  font-size: 1.8rem;
+  margin: 0 0 0.5rem;
+}
+
+.overlay-subtitle {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 640px) {
+  .enemy-panel {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .enemy-info {
+    text-align: center;
+  }
+
+  .health-row {
+    justify-content: center;
+  }
+}
