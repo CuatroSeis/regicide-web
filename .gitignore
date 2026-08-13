@@ -1,0 +1,22 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Logs y entornos
+*.log
+.env
+.env.local
+.env.*.local
+
+# Editor / SO
+.DS_Store
+.idea/
+.vscode/
+
+# Cobertura de tests
+coverage/

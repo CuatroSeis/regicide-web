@@ -1,0 +1,7 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# Permitir scripts de build de dependencias confiables (pnpm v11+)
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,21 @@
+{
+  "name": "@regicide/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@types/node": "^26.2.0",
+    "socket.io": "^4.8.3",
+    "tsx": "^4.23.12"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}
