@@ -84,14 +84,17 @@ describe('server socket.io (E2E)', () => {
       expect(snapA.hand.length).toBeGreaterThan(0);
 
       // A juega la primera carta de su mano.
+      const playedId = snapA.hand[0]!.id;
       const syncA2 = waitFor<PlayerGameState>(a, 'game:state-sync');
       const syncB2 = waitFor<PlayerGameState>(b, 'game:state-sync');
       const playAck = (await new Promise<GameAck>((resolve) =>
-        a.emit('game:play', { cardIds: [snapA.hand[0]!.id] }, ack(resolve)),
+        a.emit('game:play', { cardIds: [playedId] }, resolve),
       )) as Extract<GameAck, { ok: true }>;
       expect(playAck.ok).toBe(true);
       const [snapA2, snapB2] = await Promise.all([syncA2, syncB2]);
-      expect(snapA2.hand).toHaveLength(snapA.hand.length - 1);
+      // La carta jugada sale de la mano y pasa a la mesa (los poderes de palo
+      // como ♦ [R-12] pueden robar cartas, así que no se asume tamaño -1).
+      expect(snapA2.hand.some((card) => card.id === playedId)).toBe(false);
       expect(snapA2.table).toHaveLength(1);
       expect(snapB2.table).toEqual(snapA2.table);
 

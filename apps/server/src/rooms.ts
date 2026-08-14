@@ -174,7 +174,7 @@ export class RoomManager {
   }
 
   getRoom(code: string): RoomInfo | null {
-    const room = this.rooms.get(code);
+    const room = this.rooms.get(code.toUpperCase());
     return room ? makeRoomInfo(room) : null;
   }
 

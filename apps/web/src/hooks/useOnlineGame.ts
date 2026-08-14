@@ -19,7 +19,7 @@ type OnlineSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 function loadSession(): StoredSession | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as StoredSession) : null;
   } catch {
     return null;
@@ -27,11 +27,11 @@ function loadSession(): StoredSession | null {
 }
 
 function saveSession(session: StoredSession): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }
 
 function clearSession(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
 }
 
 export interface OnlineSessionResult {
@@ -90,6 +90,7 @@ export function useOnlineGame(): OnlineSessionResult {
             sessionRef.current = null;
             clearSession();
             setMyPlayerId(null);
+            setError(ack.error);
           }
         });
       }
