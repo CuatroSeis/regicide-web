@@ -113,7 +113,9 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   'room:create': (payload: { name: string }, ack: Ack<RoomAck>) => void;
   'room:join': (payload: { code: string; name: string }, ack: Ack<RoomAck>) => void;
-  'room:leave': (ack?: Ack<{ ok: boolean }>) => void;
+  /** Reconexión de un jugador desconectado (p. ej. tras recargar la pestaña). */
+  'room:rejoin': (payload: { code: string; playerId: string }, ack: Ack<RoomAck>) => void;
+  'room:leave': (ack?: Ack<{ ok: boolean; error?: string }>) => void;
   'game:start': (ack?: Ack<GameAck>) => void;
   'game:play': (payload: { cardIds: string[] }, ack?: Ack<GameAck>) => void;
   'game:yield': (ack?: Ack<GameAck>) => void;
