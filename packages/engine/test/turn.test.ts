@@ -114,6 +114,7 @@ describe('playCards', () => {
     });
     const result = playCards(state, [id(numberCard('hearts', 4)), id(numberCard('spades', 4))]);
     expect(result.damageDealt).toBe(8);
+    expect(state.lastDamageDealt).toBe(8);
     expect(state.enemy.damageTaken).toBe(8);
     expect(state.table).toHaveLength(2);
     expect(state.players[0]!.hand).toHaveLength(0);
@@ -128,6 +129,7 @@ describe('playCards', () => {
     const result = playCards(state, [id(numberCard('clubs', 5))]);
     expect(result.clubsActive).toBe(true);
     expect(result.damageDealt).toBe(10);
+    expect(state.lastDamageDealt).toBe(10);
     expect(state.enemy.damageTaken).toBe(10);
   });
 

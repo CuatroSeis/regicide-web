@@ -20,6 +20,7 @@ describe('publicSnapshot', () => {
     expect(view.discardPile).toHaveLength(1);
     expect(view.table).toHaveLength(1);
     expect(view.enemy.card).toBeDefined();
+    expect(view.lastDamageDealt).toBe(state.lastDamageDealt);
     expect(view.log).toEqual(state.log);
   });
 

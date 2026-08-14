@@ -71,6 +71,8 @@ export interface GameState {
   /** Jesters usados (determina nivel de victoria [R-23]). */
   jestersUsed: number;
   turnNumber: number;
+  /** Daño infligido al enemigo en la última jugada (0 si no hubo ataque). */
+  lastDamageDealt: number;
   log: string[];
 }
 

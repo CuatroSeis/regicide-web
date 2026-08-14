@@ -26,6 +26,7 @@ export interface PublicGameState {
   readonly jestersLeft: number;
   readonly jestersUsed: number;
   readonly turnNumber: number;
+  readonly lastDamageDealt: number;
   readonly log: readonly string[];
 }
 
@@ -57,6 +58,7 @@ export function publicSnapshot(state: GameState): PublicGameState {
     jestersLeft: state.jestersLeft,
     jestersUsed: state.jestersUsed,
     turnNumber: state.turnNumber,
+    lastDamageDealt: state.lastDamageDealt,
     log: [...state.log],
   };
 }

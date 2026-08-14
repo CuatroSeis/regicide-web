@@ -46,6 +46,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     jestersLeft: 2,
     jestersUsed: 0,
     turnNumber: 1,
+    lastDamageDealt: 0,
     log: [],
   };
   return { ...base, ...overrides };

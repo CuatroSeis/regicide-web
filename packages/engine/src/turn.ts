@@ -95,6 +95,7 @@ export function playCards(state: GameState, cardIds: readonly string[]): PlayRes
   const { clubsActive } = applySuitPowers(state, suits, totalValue);
   const damageDealt = computeDamage(totalValue, clubsActive);
   state.enemy.damageTaken += damageDealt;
+  state.lastDamageDealt = damageDealt;
   state.consecutiveYields = 0;
 
   const enemyDefeated = isDefeated(state.enemy);
@@ -146,6 +147,7 @@ export function yieldTurn(state: GameState): void {
     throw new Error('No puedes rendirte: todos los demás se rindieron en su último turno');
   }
   state.consecutiveYields += 1;
+  state.lastDamageDealt = 0;
   state.phase = 'suffer_damage';
   state.log.push(`Jugador ${state.players[state.currentPlayerIndex]!.id} se rinde`);
 }
@@ -159,6 +161,7 @@ function finishTurn(state: GameState): void {
   state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
   state.phase = 'choose_action';
   state.turnNumber += 1;
+  state.lastDamageDealt = 0;
   checkStuck(state);
 }
 
@@ -275,6 +278,7 @@ export function playJester(state: GameState, nextPlayerIndex: number): void {
 
   state.enemy.immunityNegated = true;
   state.consecutiveYields = 0;
+  state.lastDamageDealt = 0;
   state.currentPlayerIndex = nextPlayerIndex;
   state.phase = 'choose_action';
   state.turnNumber += 1;
