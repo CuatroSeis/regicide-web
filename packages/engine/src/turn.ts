@@ -22,6 +22,35 @@ function totalValueOf(cards: readonly Card[]): number {
   return cards.reduce((acc, card) => acc + cardValue(card), 0);
 }
 
+/**
+ * ¿Puede el jugador actual sobrevivir el ataque del enemigo?
+ * Solo un jugador puede recargar con el Jester [R-22]; en multijugador
+ * los Jesters son cartas de la mano (valor 0) y no ayudan a cubrir.
+ */
+function canSurviveAttack(state: GameState): boolean {
+  const required = effectiveAttack(state.enemy);
+  if (required === 0) return true;
+  const player = state.players[state.currentPlayerIndex]!;
+  return (
+    totalValueOf(player.hand) >= required ||
+    (state.players.length === 1 && state.jestersLeft > 0)
+  );
+}
+
+/**
+ * [R-19][R-25] Si el jugador en el paso 4 no puede cubrir el ataque (y no
+ * puede recargar con el Jester), muere y se pierde la partida. Evita que la
+ * partida quede bloqueada con el botón de cubrir deshabilitado.
+ */
+function checkCoverOrDie(state: GameState): void {
+  if (state.phase !== 'suffer_damage' || state.gameOver) return;
+  if (canSurviveAttack(state)) return;
+  state.gameOver = true;
+  state.result = 'defeat';
+  state.phase = 'game_over';
+  state.log.push('Un jugador no puede cubrir el ataque: derrota');
+}
+
 function resolveHandCards(player: Player, cardIds: readonly string[]): Card[] {
   if (cardIds.length === 0) {
     throw new Error('Debes seleccionar al menos una carta');
@@ -125,6 +154,7 @@ export function playCards(state: GameState, cardIds: readonly string[]): PlayRes
     }
   } else {
     state.phase = 'suffer_damage';
+    checkCoverOrDie(state);
   }
 
   state.log.push(
@@ -149,6 +179,7 @@ export function yieldTurn(state: GameState): void {
   state.consecutiveYields += 1;
   state.lastDamageDealt = 0;
   state.phase = 'suffer_damage';
+  checkCoverOrDie(state);
   state.log.push(`Jugador ${state.players[state.currentPlayerIndex]!.id} se rinde`);
 }
 
@@ -230,6 +261,7 @@ export function jesterSolo(state: GameState): void {
   state.jestersLeft -= 1;
   state.jestersUsed += 1;
   state.log.push('El Jester se activa: mano descartada y recargada');
+  checkCoverOrDie(state);
 }
 
 /** [R-23] Nivel de victoria en solitario según Jesters usados. */

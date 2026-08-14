@@ -191,6 +191,18 @@ describe('playCards', () => {
     expect(state.currentPlayerIndex).toBe(before);
     expect(state.enemy.card.kind).toBe('enemy');
   });
+
+  it('muere si tras jugar la mano no alcanza para cubrir el ataque [R-19]', () => {
+    const state = makeState({
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      jestersLeft: 0,
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 2)] })],
+    });
+    playCards(state, [id(numberCard('hearts', 2))]); // mano queda vacía
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.phase).toBe('game_over');
+  });
 });
 
 describe('yieldTurn / canYield [R-9]', () => {
@@ -213,7 +225,11 @@ describe('yieldTurn / canYield [R-9]', () => {
 
   it('en multijugador se permite si no todos se rindieron', () => {
     const state = makeState({
-      players: [makePlayer('p0'), makePlayer('p1')],
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      players: [
+        makePlayer('p0', { hand: [numberCard('hearts', 4), numberCard('spades', 6)] }),
+        makePlayer('p1'),
+      ],
       consecutiveYields: 0,
     });
     expect(canYield(state)).toBe(true);
@@ -224,6 +240,29 @@ describe('yieldTurn / canYield [R-9]', () => {
   it('no permite rendirse fuera del paso 1', () => {
     const state = makeState({ phase: 'suffer_damage' });
     expect(() => yieldTurn(state)).toThrow();
+  });
+
+  it('muere en el acto si la mano no alcanza y no hay Jesters [R-25]', () => {
+    const state = makeState({
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      jestersLeft: 0,
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 2)] })],
+    });
+    yieldTurn(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.phase).toBe('game_over');
+  });
+
+  it('en solo con Jester disponible no muere al rendirse (puede recargar [R-22])', () => {
+    const state = makeState({
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      jestersLeft: 1,
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 2)] })],
+    });
+    yieldTurn(state);
+    expect(state.gameOver).toBe(false);
+    expect(state.phase).toBe('suffer_damage');
   });
 });
 
@@ -332,6 +371,20 @@ describe('jesterSolo [R-22]', () => {
     });
     jesterSolo(state);
     expect(state.phase).toBe('suffer_damage');
+  });
+
+  it('muere si la recarga no alcanza y se agotó el último Jester [R-22][R-25]', () => {
+    const state = makeState({
+      phase: 'suffer_damage',
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      jestersLeft: 1,
+      tavernDeck: [numberCard('hearts', 2)], // recarga insuficiente
+    });
+    jesterSolo(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.phase).toBe('game_over');
+    expect(state.jestersLeft).toBe(0);
   });
 });
 

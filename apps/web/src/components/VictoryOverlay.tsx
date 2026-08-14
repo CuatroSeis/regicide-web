@@ -32,7 +32,7 @@ export function VictoryOverlay({ victory, victoryLevel, onNewGame, onHome }: Vic
             <div className="overlay-emoji">💀</div>
             <h2 className="overlay-title">Derrota</h2>
             <p className="overlay-subtitle">
-              No pudiste cubrir el ataque del enemigo. El castillo gana. [R-25]
+              Te quedaste sin cartas y no pudiste cubrir el ataque. El castillo gana. [R-25]
             </p>
           </>
         )}
