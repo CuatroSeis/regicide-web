@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { effectiveAttack } from '@regicide/engine';
 import type { ScreenProps } from '../navigation';
 import type { OnlineSessionResult } from '../hooks/useOnlineGame';
@@ -6,6 +6,9 @@ import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { CardFace } from '../components/CardFace';
 import { CardFan } from '../components/CardFan';
+import { DeckChip } from '../components/DeckCounters';
+import { CardTravel } from '../components/CardTravel';
+import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
 
 interface OnlineGameScreenProps extends ScreenProps {
   online: OnlineSessionResult;
@@ -48,6 +51,31 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const gamePlayerIds = new Set(s.players.map((p) => p.id));
   const otherPlayers = (online.room?.players ?? []).filter((p) => p.id !== s.playerId && gamePlayerIds.has(p.id));
 
+  const deckRef = useRef<HTMLSpanElement>(null);
+  const castleRef = useRef<HTMLSpanElement>(null);
+  const discardRef = useRef<HTMLSpanElement>(null);
+  const handRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const enemyRef = useRef<HTMLDivElement>(null);
+
+  const travelSnapshot = useMemo<CardTravelSnapshot>(
+    () => ({
+      hand: s.hand,
+      table: s.table,
+      discardPile: s.discardPile,
+      tavernCount: s.tavernCount,
+      turnNumber: s.turnNumber,
+    }),
+    [s],
+  );
+  const zones: CardTravelZones = {
+    deck: deckRef,
+    discard: discardRef,
+    hand: handRef,
+    table: tableRef,
+    enemy: enemyRef,
+  };
+
   return (
     <div className="screen game-screen">
       {s.phase === 'game_over' && (
@@ -65,21 +93,36 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
         />
       )}
 
+      <CardTravel snapshot={travelSnapshot} zones={zones} />
+
       <header className="game-header">
-        <button
-          type="button"
-          className="back-button"
-          onClick={() => {
-            online.leaveRoom();
-            onNavigate('home');
-          }}
-        >
-          ← Menú
-        </button>
-        <span className="meta">Sala {online.room?.code}</span>
+        <div className="header-left">
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => {
+              online.leaveRoom();
+              onNavigate('home');
+            }}
+          >
+            ← Menú
+          </button>
+          <DeckChip label="Mazo" value={s.tavernCount} ref={deckRef} />
+        </div>
+        <DeckChip label="Castillo" value={s.castleCount} ref={castleRef} />
+        <div className="header-right">
+          <DeckChip label="Cementerio" value={s.discardPile.length} ref={discardRef} />
+          <span className="meta">Sala {online.room?.code}</span>
+        </div>
       </header>
 
-      <EnemyPanel enemy={s.enemy} turnNumber={s.turnNumber} jestersLeft={s.jestersLeft} />
+      <EnemyPanel
+        enemy={s.enemy}
+        turnNumber={s.turnNumber}
+        jestersLeft={s.jestersLeft}
+        lastDamageDealt={s.lastDamageDealt}
+        ref={enemyRef}
+      />
 
       <div className="turn-indicator">
         {s.isMyTurn ? 'Es tu turno' : `Turno de ${currentName}`}
@@ -87,7 +130,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
       <div className="table-area">
         <span className="zone-label">Mesa</span>
-        <div className="table-cards">
+        <div className="table-cards" ref={tableRef}>
           {s.table.length === 0 ? (
             <span className="muted">Juega cartas contra el enemigo</span>
           ) : (
@@ -109,7 +152,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
           `Paso 4 — Descarta cartas para cubrir el ataque de ${effectiveAttack(s.enemy)} (${online.selectionValue} seleccionado).`}
       </div>
 
-      <div className="hand-area">
+      <div className="hand-area" ref={handRef}>
         <span className="zone-label">
           Mano ({s.hand.length}/{me?.maxHandSize ?? 0})
         </span>

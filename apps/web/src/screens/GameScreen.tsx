@@ -1,3 +1,4 @@
+import { useMemo, useRef } from 'react';
 import { canYield, effectiveAttack } from '@regicide/engine';
 import type { ScreenProps } from '../navigation';
 import { useGame } from '../hooks/useGame';
@@ -5,6 +6,9 @@ import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { CardFace } from '../components/CardFace';
 import { CardFan } from '../components/CardFan';
+import { DeckChip } from '../components/DeckCounters';
+import { CardTravel } from '../components/CardTravel';
+import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
 
 export function GameScreen({ onNavigate }: ScreenProps) {
   const game = useGame();
@@ -15,6 +19,31 @@ export function GameScreen({ onNavigate }: ScreenProps) {
   const showJester = s.jestersLeft > 0 && (s.phase === 'choose_action' || s.phase === 'suffer_damage');
 
   const logTail = s.log.slice(-5);
+
+  const deckRef = useRef<HTMLSpanElement>(null);
+  const castleRef = useRef<HTMLSpanElement>(null);
+  const discardRef = useRef<HTMLSpanElement>(null);
+  const handRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLDivElement>(null);
+  const enemyRef = useRef<HTMLDivElement>(null);
+
+  const travelSnapshot = useMemo<CardTravelSnapshot>(
+    () => ({
+      hand: player.hand,
+      table: s.table,
+      discardPile: s.discardPile,
+      tavernCount: s.tavernDeck.length,
+      turnNumber: s.turnNumber,
+    }),
+    [s, player],
+  );
+  const zones: CardTravelZones = {
+    deck: deckRef,
+    discard: discardRef,
+    hand: handRef,
+    table: tableRef,
+    enemy: enemyRef,
+  };
 
   return (
     <div className="screen game-screen">
@@ -27,18 +56,33 @@ export function GameScreen({ onNavigate }: ScreenProps) {
         />
       )}
 
+      <CardTravel snapshot={travelSnapshot} zones={zones} />
+
       <header className="game-header">
-        <button type="button" className="back-button" onClick={() => onNavigate('home')}>
-          ← Menú
-        </button>
-        <span className="meta">Semilla: {game.seed}</span>
+        <div className="header-left">
+          <button type="button" className="back-button" onClick={() => onNavigate('home')}>
+            ← Menú
+          </button>
+          <DeckChip label="Mazo" value={s.tavernDeck.length} ref={deckRef} />
+        </div>
+        <DeckChip label="Castillo" value={s.castleDeck.length} ref={castleRef} />
+        <div className="header-right">
+          <DeckChip label="Cementerio" value={s.discardPile.length} ref={discardRef} />
+          <span className="meta">Semilla: {game.seed}</span>
+        </div>
       </header>
 
-      <EnemyPanel enemy={s.enemy} turnNumber={s.turnNumber} jestersLeft={s.jestersLeft} />
+      <EnemyPanel
+        enemy={s.enemy}
+        turnNumber={s.turnNumber}
+        jestersLeft={s.jestersLeft}
+        lastDamageDealt={s.lastDamageDealt}
+        ref={enemyRef}
+      />
 
       <div className="table-area">
         <span className="zone-label">Mesa</span>
-        <div className="table-cards">
+        <div className="table-cards" ref={tableRef}>
           {s.table.length === 0 ? (
             <span className="muted">Juega cartas contra el enemigo</span>
           ) : (
@@ -58,7 +102,7 @@ export function GameScreen({ onNavigate }: ScreenProps) {
           `Paso 4 — Descarta cartas para cubrir el ataque de ${effectiveAttack(s.enemy)} (${game.selectionValue} seleccionado).`}
       </div>
 
-      <div className="hand-area">
+      <div className="hand-area" ref={handRef}>
         <span className="zone-label">
           Mano ({player.hand.length}/{player.maxHandSize})
         </span>
