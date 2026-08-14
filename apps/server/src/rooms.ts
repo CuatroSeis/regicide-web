@@ -92,13 +92,17 @@ export class RoomManager {
   }
 
   /** Reconoce a un jugador ya registrado (p. ej. tras recargar la pestaña). */
-  rejoinRoom(code: string, playerId: string): { room: RoomInfo; name: string } {
+  rejoinRoom(
+    code: string,
+    playerId: string,
+    options?: { force?: boolean },
+  ): { room: RoomInfo; name: string } {
     const room = this.requireRoom(code);
     const player = room.players.get(playerId);
     if (!player) {
       throw new Error('No estás en esta sala');
     }
-    if (player.connected) {
+    if (player.connected && !options?.force) {
       throw new Error('Ya hay una conexión activa con ese jugador');
     }
     player.connected = true;

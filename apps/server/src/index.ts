@@ -4,7 +4,11 @@ import { createServer, type ServerResponse } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import { playerSnapshot } from '@regicide/engine';
-import type { ClientToServerEvents, ServerToClientEvents } from '@regicide/engine';
+import type {
+  ClientToServerEvents,
+  PlayerGameState,
+  ServerToClientEvents,
+} from '@regicide/engine';
 import { RoomManager } from './rooms.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
@@ -86,13 +90,14 @@ export function createGameServer(): GameServer {
         const existing = roomManager.getRoom(payload.code)?.players.find(
           (player) => player.id === payload.playerId,
         );
-        if (existing?.connected) {
-          const oldSocketId = socketByPlayerId.get(payload.playerId);
-          if (oldSocketId && oldSocketId !== socket.id) {
-            io.sockets.sockets.get(oldSocketId)?.disconnect(true);
-          }
+        const oldSocketId = socketByPlayerId.get(payload.playerId);
+        const replacing = Boolean(existing?.connected && oldSocketId && oldSocketId !== socket.id);
+        if (replacing && oldSocketId) {
+          io.sockets.sockets.get(oldSocketId)?.disconnect(true);
         }
-        const { room, name } = roomManager.rejoinRoom(payload.code, payload.playerId);
+        const { room, name } = roomManager.rejoinRoom(payload.code, payload.playerId, {
+          force: replacing,
+        });
         bind(socket, io, roomManager, payload.code, payload.playerId);
         socket.join(channel(payload.code));
         io.to(channel(payload.code)).emit('room:updated', room);
@@ -239,7 +244,15 @@ function syncPlayer(io: GameServer, roomManager: RoomManager, code: string, play
   if (!game || !socketId) return;
   const socket = io.sockets.sockets.get(socketId);
   if (!socket) return;
-  socket.emit('game:state-sync', playerSnapshot(game.snapshot, playerId));
+  socket.emit('game:state-sync', withPlayerNames(roomManager, code, playerSnapshot(game.snapshot, playerId)));
+}
+
+function withPlayerNames(manager: RoomManager, code: string, snapshot: PlayerGameState): PlayerGameState {
+  const names = new Map((manager.getRoom(code)?.players ?? []).map((p) => [p.id, p.name]));
+  const log = snapshot.log.map((line) =>
+    [...names.entries()].reduce((text, [id, name]) => text.replaceAll(id, name), line),
+  );
+  return { ...snapshot, log };
 }
 
 function requireBinding(socket: GameSocket): { roomCode: string; playerId: string } {

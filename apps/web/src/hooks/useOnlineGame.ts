@@ -214,7 +214,10 @@ export function useOnlineGame(): OnlineSessionResult {
   const selectionValue = useMemo(() => {
     if (!state) return 0;
     const byId = new Map(state.hand.map((card) => [card.id, card]));
-    return selected.reduce((acc, id) => acc + cardValue(byId.get(id)!), 0);
+    return selected.reduce((acc, id) => {
+      const card = byId.get(id);
+      return card ? acc + cardValue(card) : acc;
+    }, 0);
   }, [state, selected]);
 
   const canPlay = useMemo(
