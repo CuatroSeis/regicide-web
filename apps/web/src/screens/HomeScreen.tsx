@@ -17,7 +17,7 @@ interface MenuOption {
 
 const MENU_OPTIONS: MenuOption[] = [
   { id: 'game', label: 'Iniciar partida (1p)' },
-  { id: 'room', label: 'Crear sala (2+ p)', hint: 'Próximamente: multijugador online' },
+  { id: 'room', label: 'Crear sala (2+ p)', hint: 'Multijugador online' },
   { id: 'rules', label: 'Reglas' },
 ];
 
@@ -35,7 +35,6 @@ export function HomeScreen({ onNavigate }: ScreenProps) {
             <button
               type="button"
               className="menu-button"
-              disabled={option.id === 'room'}
               onClick={() => onNavigate(option.id)}
             >
               {option.label}

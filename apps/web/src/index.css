@@ -385,6 +385,91 @@ body {
   gap: 0.7rem;
 }
 
+/* ---- Multijugador online ---- */
+
+.form {
+  width: min(24rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.form label {
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+}
+
+.form input {
+  font-family: inherit;
+  font-size: 1.05rem;
+  color: var(--ivory);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(243, 234, 216, 0.22);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  text-align: center;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.form input:focus {
+  outline: none;
+  border-color: var(--gold);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.85rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.lobby-list {
+  list-style: none;
+  margin: 1rem 0;
+  padding: 0;
+  width: min(24rem, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lobby-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(243, 234, 216, 0.14);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+}
+
+.conn {
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+
+.conn-on {
+  color: #7fd08a;
+}
+
+.conn-off {
+  color: #ff8f8f;
+}
+
+.turn-indicator {
+  width: min(54rem, 94vw);
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  min-height: 1.5em;
+}
+
 /* ---- Responsive ---- */
 
 @media (max-width: 640px) {

@@ -3,7 +3,7 @@
 Adaptación **fan-made y sin fines de lucro** del juego de cartas cooperativo
 **Regicide** (de Badgers From Mars) para jugar en el navegador con un **mazo
 estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
-(1 jugador)** y en **2 jugadores online** (en desarrollo).
+(1 jugador)** y en **2 a 4 jugadores online** (en desarrollo).
 
 > Este proyecto **no está afiliado, respaldado ni aprobado** por Badgers From
 > Mars ni por los diseñadores del juego. Consulta la sección
@@ -15,8 +15,8 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 |---|---|---|
 | 0 | Infraestructura del monorepo | ✅ Completa |
 | 1 | Motor de reglas (`packages/engine`) | ✅ Completa |
-| 2 | Web en modo solo (`apps/web`) | 🚧 En curso |
-| 3 | Multijugador online 2p (`apps/server`) | ⏳ Pendiente |
+| 2 | Web en modo solo (`apps/web`) | ✅ Completa |
+| 3 | Multijugador online 2p (`apps/server`) | 🚧 En curso |
 
 El motor implementa las reglas del juego con **IDs trazables `[R-x]`** que
 remiten a la fuente oficial (`docs/rules-source.md`, extracto del PDF de
@@ -34,7 +34,7 @@ Monorepo con [pnpm workspaces](https://pnpm.io/workspaces):
 .
 ├── packages/engine   # Motor de reglas en TypeScript puro (sin dependencias)
 ├── apps/web          # Frontend React + Vite + Framer Motion
-├── apps/server       # Servidor Socket.io para el modo online (en desarrollo)
+├── apps/server       # Servidor Socket.io con salas por código (modo online)
 └── docs              # Fuente oficial de reglas con IDs [R-x]
 ```
 
