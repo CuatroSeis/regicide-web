@@ -3,7 +3,7 @@
 Adaptación **fan-made y sin fines de lucro** del juego de cartas cooperativo
 **Regicide** (de Badgers From Mars) para jugar en el navegador con un **mazo
 estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
-(1 jugador)** y en **2 a 4 jugadores online** (en desarrollo).
+(1 jugador)** y en **2 a 4 jugadores online**.
 
 > Este proyecto **no está afiliado, respaldado ni aprobado** por Badgers From
 > Mars ni por los diseñadores del juego. Consulta la sección
@@ -16,7 +16,25 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 | 0 | Infraestructura del monorepo | ✅ Completa |
 | 1 | Motor de reglas (`packages/engine`) | ✅ Completa |
 | 2 | Web en modo solo (`apps/web`) | ✅ Completa |
-| 3 | Multijugador online 2p (`apps/server`) | 🚧 En curso |
+| 3 | Multijugador online 2-4p (`apps/server`) | ✅ Deployada |
+
+## Jugar online
+
+El modo multijugador está deployado en un solo servicio:
+
+### **https://regicide-web.onrender.com/**
+
+1. Abre la URL en **2 a 4 pestañas o ventanas** del navegador.
+2. En una pestaña crea una sala y copia el código.
+3. En las demás únete con ese código.
+
+Cada pestaña cuenta como un jugador nuevo (la sesión no se comparte entre
+pestañas).
+
+> **Avisos del plan free de Render:** el servicio duerme tras ~15 min de
+> inactividad y la primera visita tarda ~1 min en despertar (cold start). Las
+> salas viven en memoria del server: se pierden si el servicio duerme o se
+> vuelve a deployar.
 
 El motor implementa las reglas del juego con **IDs trazables `[R-x]`** que
 remiten a la fuente oficial (`docs/rules-source.md`, extracto del PDF de
@@ -34,9 +52,13 @@ Monorepo con [pnpm workspaces](https://pnpm.io/workspaces):
 .
 ├── packages/engine   # Motor de reglas en TypeScript puro (sin dependencias)
 ├── apps/web          # Frontend React + Vite + Framer Motion
-├── apps/server       # Servidor Socket.io con salas por código (modo online)
+├── apps/server       # Salas por código con Socket.io + sirve el build de la web
 └── docs              # Fuente oficial de reglas con IDs [R-x]
 ```
+
+> `apps/server` también sirve el build estático de `apps/web` en el mismo
+> origen, lo que permite deployar todo en un solo servicio (como el de
+> Render).
 
 ### Comandos
 
@@ -47,6 +69,7 @@ pnpm typecheck        # typecheck de todos los paquetes
 pnpm lint             # ESLint de todos los paquetes
 pnpm build            # build de todos los paquetes
 pnpm --filter @regicide/web dev   # levantar el frontend en modo desarrollo
+pnpm --filter @regicide/server start   # server: web estática + Socket.io en :3001
 ```
 
 ## Reglas del juego
