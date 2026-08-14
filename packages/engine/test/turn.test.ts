@@ -2,14 +2,23 @@ import { describe, expect, it } from 'vitest';
 import {
   canYield,
   discardToSurvive,
+  isStuck,
   jesterSolo,
   playCards,
+  playJester,
   validatePlay,
   victoryLevel,
   yieldTurn,
 } from '../src/turn.js';
 import { createEnemy } from '../src/combat.js';
-import { makePlayer, makeState, aceCard, enemyCard, numberCard } from './helpers.js';
+import {
+  makePlayer,
+  makeState,
+  aceCard,
+  enemyCard,
+  jesterCard,
+  numberCard,
+} from './helpers.js';
 
 const id = (card: { id: string }): string => card.id;
 
@@ -272,6 +281,24 @@ describe('discardToSurvive [R-19]', () => {
     const state = makeState({ phase: 'choose_action' });
     expect(() => discardToSurvive(state, [])).toThrow();
   });
+
+  it('las cartas jugadas permanecen en la mesa hasta derrotar al enemigo [R-18](ii)', () => {
+    const enemy = createEnemy(enemyCard('spades', 'J')); // ataque 10
+    const state = makeState({
+      phase: 'suffer_damage',
+      enemy,
+      table: [{ playerId: 'p0', card: numberCard('hearts', 5) }],
+      players: [
+        makePlayer('p0', { hand: [numberCard('hearts', 4), numberCard('spades', 6)] }),
+        makePlayer('p1'),
+      ],
+    });
+    discardToSurvive(state, [id(numberCard('hearts', 4)), id(numberCard('spades', 6))]);
+    expect(state.table).toHaveLength(1);
+    expect(state.table[0]!.card).toEqual(numberCard('hearts', 5));
+    expect(state.discardPile).toContainEqual(numberCard('hearts', 4));
+    expect(state.discardPile).toContainEqual(numberCard('spades', 6));
+  });
 });
 
 describe('jesterSolo [R-22]', () => {
@@ -311,5 +338,132 @@ describe('victoryLevel [R-23]', () => {
     expect(victoryLevel(makeState({ jestersUsed: 0 }))).toBe('gold');
     expect(victoryLevel(makeState({ jestersUsed: 1 }))).toBe('silver');
     expect(victoryLevel(makeState({ jestersUsed: 2 }))).toBe('bronze');
+  });
+});
+
+describe('playJester [R-20][R-21]', () => {
+  function jesterState(suit: 'spades' | 'clubs' = 'spades') {
+    const enemy = createEnemy(enemyCard(suit, 'J'));
+    return makeState({
+      enemy,
+      players: [makePlayer('p0', { hand: [jesterCard()] }), makePlayer('p1', { hand: [] })],
+    });
+  }
+
+  it('niega la inmunidad, no hace daño y elige quién va después', () => {
+    const state = jesterState('clubs');
+    playJester(state, 1);
+    expect(state.enemy.immunityNegated).toBe(true);
+    expect(state.enemy.damageTaken).toBe(0);
+    expect(state.phase).toBe('choose_action');
+    expect(state.currentPlayerIndex).toBe(1);
+    expect(state.turnNumber).toBe(2);
+  });
+
+  it('el Jester queda en la mesa hasta derrotar al enemigo [R-18](ii)', () => {
+    const state = jesterState();
+    playJester(state, 1);
+    expect(state.table).toHaveLength(1);
+    expect(state.table[0]!.card.kind).toBe('jester');
+  });
+
+  it('rechaza sin Jester en la mano, en solo y fuera del paso 1', () => {
+    const sinJester = makeState({
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 4)] }), makePlayer('p1')],
+    });
+    expect(() => playJester(sinJester, 1)).toThrow();
+
+    const solo = makeState({ players: [makePlayer('p0', { hand: [jesterCard()] })] });
+    expect(() => playJester(solo, 0)).toThrow();
+
+    const sufriendo = makeState({
+      phase: 'suffer_damage',
+      players: [makePlayer('p0', { hand: [jesterCard()] }), makePlayer('p1')],
+    });
+    expect(() => playJester(sufriendo, 1)).toThrow();
+  });
+
+  it('rechaza índice de jugador inválido y elegirse a sí mismo', () => {
+    const state = jesterState();
+    expect(() => playJester(state, 5)).toThrow();
+    expect(() => playJester(state, 0)).toThrow();
+  });
+
+  it('enemigo de ♠: las picas previas en la mesa reducen el ataque retroactivamente [R-21]', () => {
+    const state = jesterState('spades');
+    state.table = [
+      { playerId: 'p0', card: numberCard('spades', 3) },
+      { playerId: 'p0', card: numberCard('spades', 4) },
+    ];
+    playJester(state, 1);
+    expect(state.enemy.spadeShield).toBe(7);
+    expect(state.enemy.damageTaken).toBe(0);
+  });
+
+  it('enemigo de ♣: no aplica escudo retroactivo [R-21]', () => {
+    const state = jesterState('clubs');
+    state.table = [{ playerId: 'p0', card: numberCard('spades', 5) }];
+    playJester(state, 1);
+    expect(state.enemy.spadeShield).toBe(0);
+  });
+
+  it('un segundo Jester no vuelve a sumar las picas previas', () => {
+    const enemy = createEnemy(enemyCard('spades', 'J'));
+    const state = makeState({
+      enemy,
+      players: [makePlayer('p0', { hand: [jesterCard('jester-0')] }), makePlayer('p1', { hand: [] })],
+      table: [{ playerId: 'p0', card: numberCard('spades', 3) }],
+    });
+    state.enemy.immunityNegated = true;
+    state.enemy.spadeShield = 3;
+    playJester(state, 1);
+    expect(state.enemy.spadeShield).toBe(3);
+  });
+
+  it('rompe la cadena de rendiciones al jugar una carta [R-9]', () => {
+    const state = makeState({
+      players: [makePlayer('p0', { hand: [jesterCard()] }), makePlayer('p1', { hand: [] })],
+      consecutiveYields: 1,
+    });
+    playJester(state, 1);
+    expect(state.consecutiveYields).toBe(0);
+  });
+});
+
+describe('isStuck [R-25]', () => {
+  it('atascado solo con mano vacía y sin poder rendirse', () => {
+    const sinCartasSinYield = makeState({
+      players: [makePlayer('p0', { hand: [] }), makePlayer('p1')],
+      consecutiveYields: 1,
+    });
+    expect(isStuck(sinCartasSinYield)).toBe(true);
+
+    const sinCartasConYield = makeState({
+      players: [makePlayer('p0', { hand: [] }), makePlayer('p1')],
+      consecutiveYields: 0,
+    });
+    expect(isStuck(sinCartasConYield)).toBe(false);
+
+    const conCartas = makeState({
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 4)] }), makePlayer('p1')],
+      consecutiveYields: 1,
+    });
+    expect(isStuck(conCartas)).toBe(false);
+  });
+
+  it('el turno que pasa a un jugador atascado dispara la derrota', () => {
+    const state = makeState({
+      phase: 'suffer_damage',
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      players: [
+        makePlayer('p0', { hand: [enemyCard('hearts', 'K')] }), // valor 20 [R-24]
+        makePlayer('p1', { hand: [] }),
+      ],
+      consecutiveYields: 1,
+    });
+    discardToSurvive(state, [id(enemyCard('hearts', 'K'))]);
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.currentPlayerIndex).toBe(1);
   });
 });

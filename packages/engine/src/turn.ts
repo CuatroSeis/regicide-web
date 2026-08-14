@@ -150,13 +150,31 @@ export function yieldTurn(state: GameState): void {
   state.log.push(`Jugador ${state.players[state.currentPlayerIndex]!.id} se rinde`);
 }
 
-/** Cierra el turno: descarta las cartas jugadas y pasa el turno en sentido horario. */
+/**
+ * Cierra el turno tras el paso 4: pasa el turno en sentido horario y empieza
+ * la fase de jugar. Las cartas jugadas quedan en la mesa hasta que el enemigo
+ * sea derrotado [R-18](ii); el nuevo jugador empieza en el paso 1 [R-19].
+ */
 function finishTurn(state: GameState): void {
-  state.discardPile.push(...state.table.map((p) => p.card));
-  state.table = [];
   state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
   state.phase = 'choose_action';
   state.turnNumber += 1;
+  checkStuck(state);
+}
+
+/** [R-25] El jugador actual sin cartas y sin poder rendirse pierde la partida. */
+export function isStuck(state: GameState): boolean {
+  const player = state.players[state.currentPlayerIndex]!;
+  return player.hand.length === 0 && !canYield(state);
+}
+
+function checkStuck(state: GameState): void {
+  if (isStuck(state)) {
+    state.gameOver = true;
+    state.result = 'defeat';
+    state.phase = 'game_over';
+    state.log.push('Un jugador no puede jugar ni rendirse: derrota');
+  }
 }
 
 /**
@@ -214,4 +232,54 @@ export function jesterSolo(state: GameState): void {
 /** [R-23] Nivel de victoria en solitario según Jesters usados. */
 export function victoryLevel(state: GameState): 'gold' | 'silver' | 'bronze' {
   return state.jestersUsed === 0 ? 'gold' : state.jestersUsed === 1 ? 'silver' : 'bronze';
+}
+
+/**
+ * [R-20] [R-21] Jugar el Jester (multijugador): una sola carta en el paso 1,
+ * ataque 0, niega la inmunidad del enemigo, salta pasos 3 y 4 y elige quién
+ * empieza el siguiente turno. El Jester queda en la mesa hasta que el enemigo
+ * sea derrotado [R-18](ii).
+ */
+export function playJester(state: GameState, nextPlayerIndex: number): void {
+  if (state.gameOver) throw new Error('La partida ya terminó');
+  if (state.phase !== 'choose_action') {
+    throw new Error('No se puede jugar el Jester en esta fase');
+  }
+  if (state.players.length === 1) {
+    throw new Error('El Jester como jugada solo aplica en multijugador');
+  }
+  const player = state.players[state.currentPlayerIndex]!;
+  const jester = player.hand.find((card) => card.kind === 'jester');
+  if (!jester) throw new Error('No tienes un Jester en la mano');
+  if (nextPlayerIndex < 0 || nextPlayerIndex >= state.players.length) {
+    throw new Error('Jugador destino inválido');
+  }
+  // TODO(regla-ambigua): "the player of the Jester chooses any player to go next"
+  // — se asume que no puede elegirse a sí mismo para evitar turnos consecutivos.
+  if (nextPlayerIndex === state.currentPlayerIndex) {
+    throw new Error('El Jester debe elegir a otro jugador para ir después');
+  }
+
+  player.hand = player.hand.filter((card) => card.id !== jester.id);
+  state.table.push({ playerId: player.id, card: jester });
+
+  // [R-21]: contra un enemigo de ♠, las picas jugadas antes del Jester
+  // comienzan a reducir el ataque (escudo retroactivo). Si la inmunidad ya
+  // estaba anulada, el escudo ya las contó, así que no se suman dos veces.
+  if (state.enemy.card.suit === 'spades' && !state.enemy.immunityNegated) {
+    const priorSpades = state.table
+      .filter((p) => p.card.id !== jester.id && p.card.suit === 'spades')
+      .reduce((acc, p) => acc + cardValue(p.card), 0);
+    state.enemy.spadeShield += priorSpades;
+  }
+
+  state.enemy.immunityNegated = true;
+  state.consecutiveYields = 0;
+  state.currentPlayerIndex = nextPlayerIndex;
+  state.phase = 'choose_action';
+  state.turnNumber += 1;
+  state.log.push(
+    `Jugador ${player.id} juega el Jester y elige a ${state.players[nextPlayerIndex]!.id}`,
+  );
+  checkStuck(state);
 }

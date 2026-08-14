@@ -23,6 +23,10 @@ export function enemyCard(suit: Card['suit'], rank: 'J' | 'Q' | 'K'): Card {
   return { id: `enemy-${suit}-${rank}`, kind: 'enemy', rank, suit };
 }
 
+export function jesterCard(id = 'jester-0'): Card {
+  return { id, kind: 'jester', rank: null, suit: null };
+}
+
 export function makeState(overrides: Partial<GameState> = {}): GameState {
   const castle = createCastleDeck(mulberry32(2));
   const first = castle.pop()!;

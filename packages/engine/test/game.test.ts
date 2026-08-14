@@ -99,6 +99,21 @@ describe('Game (fachada inmutable)', () => {
     expect(game.snapshot.jestersUsed).toBe(1);
   });
 
+  it('playJester() niega la inmunidad y elige al siguiente jugador [R-20]', () => {
+    for (let seed = 0; seed < 1000; seed++) {
+      const game = new Game({ playerCount: 3, seed });
+      const jester = game.snapshot.players[0]!.hand.find((c) => c.kind === 'jester');
+      if (!jester) continue;
+      game.playJester(1);
+      const s = game.snapshot;
+      expect(s.enemy.immunityNegated).toBe(true);
+      expect(s.currentPlayerIndex).toBe(1);
+      expect(s.table[0]!.card.kind).toBe('jester');
+      return;
+    }
+    throw new Error('Ninguna semilla dejó un Jester en la mano de p0');
+  });
+
   it('reporta estado inicial sin partida terminada', () => {
     const game = new Game({ playerCount: 1, seed: 3 });
     expect(game.over).toBe(false);

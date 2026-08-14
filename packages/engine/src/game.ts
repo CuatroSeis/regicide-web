@@ -14,6 +14,7 @@ import {
   discardToSurvive,
   jesterSolo,
   playCards,
+  playJester as playJesterAction,
   victoryLevel,
   yieldTurn,
 } from './turn.js';
@@ -116,6 +117,13 @@ export class Game {
   jester(): void {
     const next = structuredClone(this.state);
     jesterSolo(next);
+    this.state = next;
+  }
+
+  /** [R-20] Jugar el Jester (multijugador) y elegir quién va después. */
+  playJester(nextPlayerIndex: number): void {
+    const next = structuredClone(this.state);
+    playJesterAction(next, nextPlayerIndex);
     this.state = next;
   }
 
