@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: regicide-online
+    runtime: node
+    repo: https://github.com/CuatroSeis/regicide-web
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @regicide/web build
+    startCommand: pnpm --filter @regicide/server start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: '22'

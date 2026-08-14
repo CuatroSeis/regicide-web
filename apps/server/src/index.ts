@@ -1,4 +1,7 @@
-import { createServer } from 'node:http';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { createServer, type ServerResponse } from 'node:http';
+import { extname, join, normalize } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import { playerSnapshot } from '@regicide/engine';
 import type { ClientToServerEvents, ServerToClientEvents } from '@regicide/engine';
@@ -6,6 +9,21 @@ import { RoomManager } from './rooms.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
+/** Build estático de la web (fallback al deploy de un solo origen). */
+const PUBLIC_DIR = process.env.PUBLIC_DIR ?? join(import.meta.dirname, '../../web/dist');
+
+const MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.ico': 'image/x-icon',
+  '.webmanifest': 'application/manifest+json',
+  '.woff2': 'font/woff2',
+  '.map': 'application/json',
+};
 
 interface SocketData {
   roomCode?: string;
@@ -19,7 +37,13 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, Soc
 const socketByPlayerId = new Map<string, string>();
 
 export function createGameServer(): GameServer {
-  const httpServer = createServer();
+  // Sirve el build estático de la web con fallback SPA; los paths de socket.io
+  // los maneja el engine de Socket.io (no respondemos acá).
+  const httpServer = createServer((req, res) => {
+    const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+    if (pathname.startsWith('/socket.io/')) return;
+    void servePublicFile(pathname === '/' ? '/index.html' : pathname, res);
+  });
   const io = new Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>(
     httpServer,
     {
@@ -234,13 +258,38 @@ function channel(code: string): string {
   return `room:${code}`;
 }
 
+async function servePublicFile(pathname: string, res: ServerResponse): Promise<void> {
+  const filePath = normalize(join(PUBLIC_DIR, pathname));
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+  try {
+    const info = await stat(filePath);
+    if (info.isFile()) {
+      res.writeHead(200, { 'content-type': MIME_TYPES[extname(filePath)] ?? 'application/octet-stream' });
+      createReadStream(filePath).pipe(res);
+      return;
+    }
+  } catch {
+    // No existe el archivo: SPA fallback.
+  }
+  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  createReadStream(join(PUBLIC_DIR, 'index.html')).pipe(res);
+}
+
 function message(err: unknown): string {
   return err instanceof Error ? err.message : 'Error inesperado';
 }
 
 export function startServer(port = PORT): GameServer {
   const io = createGameServer();
-  io.listen(port);
-  console.log(`Regicide server escuchando en http://localhost:${port}`);
+  // OJO: no usar io.listen(port) — al recibir un número, Socket.io crea un
+  // http.Server nuevo que responde 404 a todo lo que no sea /socket.io.
+  // Escuchamos nuestro propio server para que el estático funcione.
+  io.httpServer.listen(port, () => {
+    console.log(`Regicide server escuchando en http://localhost:${port}`);
+  });
   return io;
 }
