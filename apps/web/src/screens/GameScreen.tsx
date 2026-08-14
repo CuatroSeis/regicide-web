@@ -20,9 +20,9 @@ export function GameScreen({ onNavigate }: ScreenProps) {
 
   const logTail = s.log.slice(-5);
 
-  const deckRef = useRef<HTMLSpanElement>(null);
+  const deckRef = useRef<HTMLDivElement>(null);
   const castleRef = useRef<HTMLSpanElement>(null);
-  const discardRef = useRef<HTMLSpanElement>(null);
+  const discardRef = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
@@ -63,13 +63,10 @@ export function GameScreen({ onNavigate }: ScreenProps) {
           <button type="button" className="back-button" onClick={() => onNavigate('home')}>
             ← Menú
           </button>
-          <DeckChip label="Mazo" value={s.tavernDeck.length} ref={deckRef} />
-        </div>
-        <DeckChip label="Castillo" value={s.castleDeck.length} ref={castleRef} />
-        <div className="header-right">
-          <DeckChip label="Cementerio" value={s.discardPile.length} ref={discardRef} />
           <span className="meta">Semilla: {game.seed}</span>
         </div>
+        <DeckChip label="Castillo" value={s.castleDeck.length} ref={castleRef} />
+        <div className="header-right" />
       </header>
 
       <EnemyPanel
@@ -77,6 +74,11 @@ export function GameScreen({ onNavigate }: ScreenProps) {
         turnNumber={s.turnNumber}
         jestersLeft={s.jestersLeft}
         lastDamageDealt={s.lastDamageDealt}
+        tavernCount={s.tavernDeck.length}
+        discardCount={s.discardPile.length}
+        discardTopCard={s.discardPile[s.discardPile.length - 1]}
+        deckRef={deckRef}
+        discardRef={discardRef}
         ref={enemyRef}
       />
 

@@ -1,9 +1,10 @@
-import type { Enemy, Suit } from '@regicide/engine';
+import type { Card, Enemy, Suit } from '@regicide/engine';
 import { effectiveAttack } from '@regicide/engine';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import type { Ref } from 'react';
 import { CardFace } from './CardFace';
+import { CardPile } from './CardPile';
 
 const RANK_NAME: Record<string, string> = { J: 'Jota', Q: 'Reina', K: 'Rey' };
 const SUIT_NAME: Record<Suit, string> = {
@@ -20,6 +21,14 @@ interface EnemyPanelProps {
   jestersLeft: number;
   /** Último daño infligido al enemigo (para el número flotante). */
   lastDamageDealt: number;
+  /** Cartas en el mazo (Taverna) y el cementerio. */
+  tavernCount: number;
+  discardCount: number;
+  /** Carta superior del cementerio (boca arriba). */
+  discardTopCard?: Card;
+  /** Anclas para las animaciones de viaje (pilas mazo/cementerio). */
+  deckRef?: Ref<HTMLDivElement>;
+  discardRef?: Ref<HTMLDivElement>;
   /** Ancla para las animaciones de viaje (enemigo derrotado → cementerio). */
   ref?: Ref<HTMLDivElement>;
 }
@@ -49,7 +58,18 @@ function DamageFloat({ lastDamageDealt, turnNumber }: { lastDamageDealt: number;
   );
 }
 
-export function EnemyPanel({ enemy, turnNumber, jestersLeft, lastDamageDealt, ref }: EnemyPanelProps) {
+export function EnemyPanel({
+  enemy,
+  turnNumber,
+  jestersLeft,
+  lastDamageDealt,
+  tavernCount,
+  discardCount,
+  discardTopCard,
+  deckRef,
+  discardRef,
+  ref,
+}: EnemyPanelProps) {
   const remaining = enemy.maxHealth - enemy.damageTaken;
   const pct = Math.max(0, Math.min(100, (remaining / enemy.maxHealth) * 100));
   const attack = effectiveAttack(enemy);
@@ -68,12 +88,18 @@ export function EnemyPanel({ enemy, turnNumber, jestersLeft, lastDamageDealt, re
         </span>
       </div>
 
-      <div className="enemy-card-wrap">
-        <div className="enemy-card">
-          <CardFace card={enemy.card} width={130} />
-          {enemy.spadeShield > 0 && <span className="badge shield-badge">♠ {enemy.spadeShield}</span>}
+      <div className="enemy-card-row">
+        <CardPile mode="deck" count={tavernCount} label="Mazo" ref={deckRef} />
+
+        <div className="enemy-card-wrap">
+          <div className="enemy-card">
+            <CardFace card={enemy.card} width={130} />
+            {enemy.spadeShield > 0 && <span className="badge shield-badge">♠ {enemy.spadeShield}</span>}
+          </div>
+          <DamageFloat lastDamageDealt={lastDamageDealt} turnNumber={turnNumber} />
         </div>
-        <DamageFloat lastDamageDealt={lastDamageDealt} turnNumber={turnNumber} />
+
+        <CardPile mode="discard" count={discardCount} topCard={discardTopCard} label="Cementerio" ref={discardRef} />
       </div>
 
       <div className="enemy-name">

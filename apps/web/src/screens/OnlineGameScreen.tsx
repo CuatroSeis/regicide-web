@@ -51,9 +51,9 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const gamePlayerIds = new Set(s.players.map((p) => p.id));
   const otherPlayers = (online.room?.players ?? []).filter((p) => p.id !== s.playerId && gamePlayerIds.has(p.id));
 
-  const deckRef = useRef<HTMLSpanElement>(null);
+  const deckRef = useRef<HTMLDivElement>(null);
   const castleRef = useRef<HTMLSpanElement>(null);
-  const discardRef = useRef<HTMLSpanElement>(null);
+  const discardRef = useRef<HTMLDivElement>(null);
   const handRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
@@ -107,13 +107,10 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
           >
             ← Menú
           </button>
-          <DeckChip label="Mazo" value={s.tavernCount} ref={deckRef} />
-        </div>
-        <DeckChip label="Castillo" value={s.castleCount} ref={castleRef} />
-        <div className="header-right">
-          <DeckChip label="Cementerio" value={s.discardPile.length} ref={discardRef} />
           <span className="meta">Sala {online.room?.code}</span>
         </div>
+        <DeckChip label="Castillo" value={s.castleCount} ref={castleRef} />
+        <div className="header-right" />
       </header>
 
       <EnemyPanel
@@ -121,6 +118,11 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
         turnNumber={s.turnNumber}
         jestersLeft={s.jestersLeft}
         lastDamageDealt={s.lastDamageDealt}
+        tavernCount={s.tavernCount}
+        discardCount={s.discardPile.length}
+        discardTopCard={s.discardPile[s.discardPile.length - 1]}
+        deckRef={deckRef}
+        discardRef={discardRef}
         ref={enemyRef}
       />
 
