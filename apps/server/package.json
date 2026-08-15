@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
-    "start": "tsx src/main.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "start": "tsx --env-file-if-exists=.env src/main.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test",
@@ -14,11 +14,13 @@
   "dependencies": {
     "@regicide/engine": "workspace:*",
     "@types/node": "^26.2.0",
+    "pg": "^8.23.0",
     "socket.io": "^4.8.3",
     "tsx": "^4.23.12"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
+    "@types/pg": "^8.21.0",
     "socket.io-client": "^4.8.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"

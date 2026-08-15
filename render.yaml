@@ -10,3 +10,6 @@ services:
     envVars:
       - key: NODE_VERSION
         value: '22'
+      # Se configura en el dashboard (sync:false evita que se pise con el repo).
+      - key: DATABASE_URL
+        sync: false

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { Pool, types } from 'pg';
 import { CASTLE_ENEMY_COUNT, SOLO_RANK_PRIORITY, soloRankFor } from '@regicide/engine';
 import type { SoloRank } from '@regicide/engine';
 import type { Card, GameResult, Suit } from '@regicide/engine';
@@ -25,6 +26,16 @@ export interface ScoreEntry {
 
 /** Payload aceptado por POST /api/scores (el rango lo calcula el servidor). */
 export type ScoreInput = Omit<ScoreEntry, 'rank' | 'createdAt'>;
+
+/** Contrato de la tabla de posiciones: soporta memoria+archivo o Postgres. */
+export interface LeaderboardStore {
+  /** Carga inicial (disco o garantiza el esquema en la BD). */
+  load(): Promise<void>;
+  /** Registra un resultado; devuelve la entrada completa con rango y fecha. */
+  add(input: ScoreInput): ScoreEntry;
+  /** Vista ordenada (mejor primero), limitada. */
+  list(limit?: number): Promise<readonly ScoreEntry[]>;
+}
 
 function sanitizeName(name: unknown): string {
   if (typeof name !== 'string') return 'Jugador';
@@ -102,12 +113,18 @@ function compareEntries(a: ScoreEntry, b: ScoreEntry): number {
   return a.createdAt - b.createdAt;
 }
 
+function rankFor(input: ScoreInput): SoloRank {
+  return soloRankFor(input.result, input.jestersUsed, input.enemiesDefeated);
+}
+
+export const DEFAULT_LEADERBOARD_FILE = join(import.meta.dirname, '../../data/leaderboard.json');
+
 /**
  * Tabla de posiciones en memoria con persistencia en un archivo JSON.
  * Validación de payloads, cálculo de rango y ordenamiento viven acá (no en el
  * transporte), para poder testearla de forma aislada.
  */
-export class LeaderboardStore {
+export class FileLeaderboardStore implements LeaderboardStore {
   private readonly entries: ScoreEntry[] = [];
   private readonly filePath: string | null;
 
@@ -151,7 +168,7 @@ export class LeaderboardStore {
   }
 
   /** Vista ordenada (mejor primero), limitada. */
-  list(limit = LEADERBOARD_MAX): readonly ScoreEntry[] {
+  async list(limit = LEADERBOARD_MAX): Promise<readonly ScoreEntry[]> {
     return [...this.entries]
       .sort(compareEntries)
       .slice(0, Math.max(1, Math.min(limit, LEADERBOARD_MAX)));
@@ -190,15 +207,135 @@ export class LeaderboardStore {
     if (!this.filePath) return;
     try {
       await mkdir(dirname(this.filePath), { recursive: true });
-      await writeFile(this.filePath, JSON.stringify(this.list()), 'utf8');
+      await writeFile(this.filePath, JSON.stringify(await this.list()), 'utf8');
     } catch {
       // La persistencia es best-effort: el fallo no debe romper la API.
     }
   }
 }
 
-function rankFor(input: ScoreInput): SoloRank {
-  return soloRankFor(input.result, input.jestersUsed, input.enemiesDefeated);
+/** Clasificación de PostgreSQL para columnas int8 (seed/created_at/id). */
+const INT8_OID = 20;
+
+/**
+ * Tabla de posiciones persistida en PostgreSQL (Supabase). El rango lo sigue
+ * calculando el servidor (no confía en el cliente) y el orden se resuelve en
+ * SQL replicando compareEntries. Sin DATABASE_URL se usa FileLeaderboardStore.
+ */
+export class PostgresLeaderboardStore implements LeaderboardStore {
+  private readonly pool: Pool;
+  private readonly table: string;
+  private pending: Promise<void> = Promise.resolve();
+
+  constructor(connectionString: string, table = 'scores') {
+    this.table = table;
+    this.pool = new Pool({ connectionString, max: 3 });
+    // int8 llega como string por defecto; seed/createdAt son Number en el dominio.
+    types.setTypeParser(INT8_OID, (value: string) => Number(value));
+  }
+
+  /** Garantiza el esquema (CREATE TABLE IF NOT EXISTS). */
+  async load(): Promise<void> {
+    await this.pool.query(`
+      create table if not exists ${this.table} (
+        id bigint generated always as identity primary key,
+        name text not null,
+        seed bigint not null,
+        result text not null check (result in ('victory','defeat')),
+        rank text not null,
+        enemies_defeated int not null check (enemies_defeated between 0 and 12),
+        enemy_card jsonb,
+        jesters_used int not null check (jesters_used between 0 and 2),
+        turn_number int not null,
+        created_at bigint not null
+      )
+    `);
+  }
+
+  /** Registra un resultado; devuelve la entrada completa con rango y fecha. */
+  add(input: ScoreInput): ScoreEntry {
+    const entry: ScoreEntry = {
+      ...input,
+      rank: rankFor(input),
+      createdAt: Date.now(),
+    };
+    this.pending = this.pending
+      .then(() => this.insert(entry))
+      .catch((err) => {
+        console.error('[leaderboard] no se pudo persistir en Postgres:', err);
+      });
+    return entry;
+  }
+
+  /** Espera a que terminen las escrituras pendientes (tests). */
+  async flush(): Promise<void> {
+    await this.pending;
+  }
+
+  /** Vista ordenada (mejor primero), limitada. */
+  async list(limit = LEADERBOARD_MAX): Promise<readonly ScoreEntry[]> {
+    const safeLimit = Math.max(1, Math.min(limit, LEADERBOARD_MAX));
+    const res = await this.pool.query(
+      `select name, seed, result, rank, enemies_defeated, enemy_card, jesters_used,
+              turn_number, created_at
+       from ${this.table}
+       order by
+         case rank when 'gold' then 7 when 'silver' then 6 when 'bronze' then 5
+           when 'baron' then 4 when 'knight' then 3 when 'squire' then 2 else 1 end desc,
+         enemies_defeated desc,
+         turn_number asc,
+         created_at asc
+       limit $1`,
+      [safeLimit],
+    );
+    return res.rows.map((row) => ({
+      name: row.name,
+      seed: row.seed,
+      result: row.result,
+      rank: row.rank,
+      enemiesDefeated: row.enemies_defeated,
+      enemyCard: row.enemy_card,
+      jestersUsed: row.jesters_used,
+      turnNumber: row.turn_number,
+      createdAt: row.created_at,
+    }));
+  }
+
+  /** Cierra el pool (tests / shutdown limpio). */
+  async close(): Promise<void> {
+    await this.pool.end();
+  }
+
+  /** Elimina la tabla (solo para tests de integración). */
+  async dropTable(): Promise<void> {
+    await this.pool.query(`drop table if exists ${this.table}`);
+  }
+
+  private async insert(entry: ScoreEntry): Promise<void> {
+    await this.pool.query(
+      `insert into ${this.table}
+         (name, seed, result, rank, enemies_defeated, enemy_card, jesters_used, turn_number, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        entry.name,
+        entry.seed,
+        entry.result,
+        entry.rank,
+        entry.enemiesDefeated,
+        entry.enemyCard,
+        entry.jestersUsed,
+        entry.turnNumber,
+        entry.createdAt,
+      ],
+    );
+  }
 }
 
-export const DEFAULT_LEADERBOARD_FILE = join(import.meta.dirname, '../../data/leaderboard.json');
+/** Factory: Postgres si hay DATABASE_URL; si no, archivo JSON (fallback/dev). */
+export function createLeaderboardStore(): LeaderboardStore {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) {
+    return new PostgresLeaderboardStore(databaseUrl);
+  }
+  return new FileLeaderboardStore(process.env.LEADERBOARD_FILE ?? DEFAULT_LEADERBOARD_FILE);
+}

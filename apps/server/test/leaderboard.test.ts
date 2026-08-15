@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Server } from 'socket.io';
-import { LeaderboardStore, LEADERBOARD_MAX, parseScoreInput } from '../src/leaderboard.js';
+import { FileLeaderboardStore, LEADERBOARD_MAX, parseScoreInput } from '../src/leaderboard.js';
 import type { ScoreInput } from '../src/leaderboard.js';
 import { startServer } from '../src/index.js';
 
@@ -51,8 +51,8 @@ describe('parseScoreInput', () => {
 });
 
 describe('LeaderboardStore', () => {
-  it('calcula el rango y ordena por prioridad de rango', () => {
-    const store = new LeaderboardStore();
+  it('calcula el rango y ordena por prioridad de rango', async () => {
+    const store = new FileLeaderboardStore();
     const gold = store.add(input({ result: 'victory', jestersUsed: 0, enemiesDefeated: 12, enemyCard: null }));
     const peasant = store.add(input({ enemiesDefeated: 1 }));
     const baron = store.add(input({ enemiesDefeated: 11 }));
@@ -63,38 +63,38 @@ describe('LeaderboardStore', () => {
     expect(peasant.rank).toBe('peasant');
     expect(baron.rank).toBe('baron');
 
-    expect(store.list().map((e) => e.rank)).toEqual(['gold', 'bronze', 'baron', 'peasant']);
+    expect((await store.list()).map((e) => e.rank)).toEqual(['gold', 'bronze', 'baron', 'peasant']);
   });
 
-  it('desempata por enemigos derrotados y luego por turnos', () => {
-    const store = new LeaderboardStore();
+  it('desempata por enemigos derrotados y luego por turnos', async () => {
+    const store = new FileLeaderboardStore();
     const slow = store.add(input({ enemiesDefeated: 9, turnNumber: 30 }));
     const fast = store.add(input({ enemiesDefeated: 9, turnNumber: 18 }));
     const more = store.add(input({ enemiesDefeated: 10, turnNumber: 40 }));
-    expect(store.list().map((e) => e.seed)).toEqual([more.seed, fast.seed, slow.seed]);
+    expect((await store.list()).map((e) => e.seed)).toEqual([more.seed, fast.seed, slow.seed]);
   });
 
-  it('limita la tabla a LEADERBOARD_MAX entradas', () => {
-    const store = new LeaderboardStore();
+  it('limita la tabla a LEADERBOARD_MAX entradas', async () => {
+    const store = new FileLeaderboardStore();
     for (let i = 0; i < LEADERBOARD_MAX + 10; i++) {
       store.add(input({ name: `J${i}`, seed: i }));
     }
-    expect(store.list().length).toBe(LEADERBOARD_MAX);
+    expect((await store.list()).length).toBe(LEADERBOARD_MAX);
   });
 
   it('persiste y recarga desde disco', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'regicide-lb-'));
     const file = join(dir, 'leaderboard.json');
     try {
-      const store = new LeaderboardStore(file);
+      const store = new FileLeaderboardStore(file);
       await store.load();
       store.add(input({ name: 'Pesistente' }));
       // add() persiste de forma asíncrona (best-effort); esperamos el write.
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      const reloaded = new LeaderboardStore(file);
+      const reloaded = new FileLeaderboardStore(file);
       await reloaded.load();
-      const entries = reloaded.list();
+      const entries = await reloaded.list();
       expect(entries).toHaveLength(1);
       expect(entries[0]!.name).toBe('Pesistente');
       expect(entries[0]!.rank).toBe('knight');
@@ -113,7 +113,7 @@ describe('API HTTP /api', () => {
 
   beforeAll(async () => {
     const dir = await mkdtemp(join(tmpdir(), 'regicide-api-'));
-    server = startServer(0, { leaderboard: new LeaderboardStore(join(dir, 'lb.json')) });
+    server = startServer(0, { leaderboard: new FileLeaderboardStore(join(dir, 'lb.json')) });
     await new Promise<void>((resolve) => server.httpServer.once('listening', () => resolve()));
     const port = (server.httpServer.address() as import('node:net').AddressInfo).port;
     url = `http://localhost:${port}`;

@@ -23,3 +23,6 @@ coverage/
 
 # Datos locales del servidor (tabla de posiciones)
 apps/server/data/
+
+# Referencias de diseño (Assets Dark Fantasy): no se suben al build
+assets dark fantasy/

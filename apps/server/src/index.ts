@@ -10,19 +10,13 @@ import type {
   ServerToClientEvents,
 } from '@regicide/engine';
 import { RoomManager } from './rooms.js';
-import {
-  DEFAULT_LEADERBOARD_FILE,
-  LeaderboardStore,
-  parseScoreInput,
-} from './leaderboard.js';
-import type { ScoreInput } from './leaderboard.js';
+import { createLeaderboardStore, parseScoreInput } from './leaderboard.js';
+import type { LeaderboardStore, ScoreInput } from './leaderboard.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 /** Build estático de la web (fallback al deploy de un solo origen). */
 const PUBLIC_DIR = process.env.PUBLIC_DIR ?? join(import.meta.dirname, '../../web/dist');
-/** Archivo de persistencia de la tabla de posiciones (JSON). */
-const LEADERBOARD_FILE = process.env.LEADERBOARD_FILE ?? DEFAULT_LEADERBOARD_FILE;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -54,10 +48,11 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
   const httpServer = createServer((req, res) => {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
     if (pathname.startsWith('/socket.io/')) return;
-    if (handleApi(req, res, leaderboard)) return;
-    void servePublicFile(pathname === '/' ? '/index.html' : pathname, res);
+    void handleApi(req, res, leaderboard).then((handled) => {
+      if (!handled) void servePublicFile(pathname === '/' ? '/index.html' : pathname, res);
+    });
   });
-  const leaderboard = options?.leaderboard ?? new LeaderboardStore(LEADERBOARD_FILE);
+  const leaderboard = options?.leaderboard ?? createLeaderboardStore();
   void leaderboard.load();
   const io = new Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>(
     httpServer,
@@ -285,11 +280,21 @@ function channel(code: string): string {
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
 
 /** API REST mínima para la tabla de posiciones (partidas 1p). */
-function handleApi(req: IncomingMessage, res: ServerResponse, leaderboard: LeaderboardStore): boolean {
+async function handleApi(
+  req: IncomingMessage,
+  res: ServerResponse,
+  leaderboard: LeaderboardStore,
+): Promise<boolean> {
   const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
   if (req.method === 'GET' && pathname === '/api/leaderboard') {
-    const limit = Number(new URL(req.url ?? '/', 'http://localhost').searchParams.get('limit') ?? 50);
-    sendJson(res, 200, { entries: leaderboard.list(limit) });
+    try {
+      const limit = Number(
+        new URL(req.url ?? '/', 'http://localhost').searchParams.get('limit') ?? 50,
+      );
+      sendJson(res, 200, { entries: await leaderboard.list(limit) });
+    } catch (err) {
+      sendJson(res, 500, { error: message(err) });
+    }
     return true;
   }
   if (req.method === 'POST' && pathname === '/api/scores') {
