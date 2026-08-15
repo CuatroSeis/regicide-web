@@ -1,6 +1,6 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { createServer, type ServerResponse } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { Server, type Socket } from 'socket.io';
 import { playerSnapshot } from '@regicide/engine';
@@ -10,11 +10,19 @@ import type {
   ServerToClientEvents,
 } from '@regicide/engine';
 import { RoomManager } from './rooms.js';
+import {
+  DEFAULT_LEADERBOARD_FILE,
+  LeaderboardStore,
+  parseScoreInput,
+} from './leaderboard.js';
+import type { ScoreInput } from './leaderboard.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
 /** Build estático de la web (fallback al deploy de un solo origen). */
 const PUBLIC_DIR = process.env.PUBLIC_DIR ?? join(import.meta.dirname, '../../web/dist');
+/** Archivo de persistencia de la tabla de posiciones (JSON). */
+const LEADERBOARD_FILE = process.env.LEADERBOARD_FILE ?? DEFAULT_LEADERBOARD_FILE;
 
 const MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -40,14 +48,17 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, Soc
 /** playerId → socketId, para reenviar el estado individual de cada jugador. */
 const socketByPlayerId = new Map<string, string>();
 
-export function createGameServer(): GameServer {
+export function createGameServer(options?: { leaderboard?: LeaderboardStore }): GameServer {
   // Sirve el build estático de la web con fallback SPA; los paths de socket.io
   // los maneja el engine de Socket.io (no respondemos acá).
   const httpServer = createServer((req, res) => {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
     if (pathname.startsWith('/socket.io/')) return;
+    if (handleApi(req, res, leaderboard)) return;
     void servePublicFile(pathname === '/' ? '/index.html' : pathname, res);
   });
+  const leaderboard = options?.leaderboard ?? new LeaderboardStore(LEADERBOARD_FILE);
+  void leaderboard.load();
   const io = new Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>(
     httpServer,
     {
@@ -271,6 +282,56 @@ function channel(code: string): string {
   return `room:${code}`;
 }
 
+const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' };
+
+/** API REST mínima para la tabla de posiciones (partidas 1p). */
+function handleApi(req: IncomingMessage, res: ServerResponse, leaderboard: LeaderboardStore): boolean {
+  const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
+  if (req.method === 'GET' && pathname === '/api/leaderboard') {
+    const limit = Number(new URL(req.url ?? '/', 'http://localhost').searchParams.get('limit') ?? 50);
+    sendJson(res, 200, { entries: leaderboard.list(limit) });
+    return true;
+  }
+  if (req.method === 'POST' && pathname === '/api/scores') {
+    void readBody(req)
+      .then((body) => {
+        const input: ScoreInput = parseScoreInput(body);
+        const entry = leaderboard.add(input);
+        sendJson(res, 201, { entry });
+      })
+      .catch((err) => sendJson(res, 400, { error: message(err) }));
+    return true;
+  }
+  return false;
+}
+
+function sendJson(res: ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, JSON_HEADERS);
+  res.end(JSON.stringify(body));
+}
+
+function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.setEncoding('utf8');
+    req.on('data', (chunk: string) => {
+      data += chunk;
+      if (data.length > 1_000_000) {
+        req.destroy();
+        reject(new Error('Body demasiado grande'));
+      }
+    });
+    req.on('end', () => {
+      try {
+        resolve(data.length > 0 ? JSON.parse(data) : {});
+      } catch {
+        reject(new Error('JSON inválido'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
 async function servePublicFile(pathname: string, res: ServerResponse): Promise<void> {
   const filePath = normalize(join(PUBLIC_DIR, pathname));
   if (!filePath.startsWith(PUBLIC_DIR)) {
@@ -296,8 +357,8 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : 'Error inesperado';
 }
 
-export function startServer(port = PORT): GameServer {
-  const io = createGameServer();
+export function startServer(port = PORT, options?: { leaderboard?: LeaderboardStore }): GameServer {
+  const io = createGameServer(options);
   // OJO: no usar io.listen(port) — al recibir un número, Socket.io crea un
   // http.Server nuevo que responde 404 a todo lo que no sea /socket.io.
   // Escuchamos nuestro propio server para que el estático funcione.
