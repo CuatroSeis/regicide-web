@@ -4,10 +4,10 @@
  * Reemplaza los `zoom` fijos del CSS que recortaban la mano en mobile/web.
  */
 
-export const HAND_MAX_CARD_WIDTH = 104;
+export const HAND_MAX_CARD_WIDTH = 72;
 export const HAND_MIN_CARD_WIDTH = 52;
-/** Solape entre cartas contiguas, como fracción del ancho (34/104 ≈ 0.327). */
-export const HAND_OVERLAP_RATIO = 0.33;
+/** Solape entre cartas contiguas, como fracción del ancho (34/72 ≈ 0.472). */
+export const HAND_OVERLAP_RATIO = 0.47;
 /** Margen lateral de respiro dentro de .hand-area. */
 export const HAND_SIDE_PAD = 12;
 /**
