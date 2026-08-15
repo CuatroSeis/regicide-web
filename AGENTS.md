@@ -122,8 +122,17 @@ Iteración visual + persistencia real de la tabla (commits `7ee999f`, `98132e6`,
 ### Arrastrar para jugar (P5)
 - `apps/web/src/hooks/useCardDrag.ts` (Pointer Events, umbral ~6px) + `apps/web/src/components/CardDragGhost.tsx` (fantasma del grupo arrastrado). Soltar sobre mesa/enemigo → `play()` (solo si `canPlay`). `CardFan` expone `onCardPointerDown` + `suppressClick` (suprime el clic posterior al arrastre); `touch-action:none` en las cartas. El clic y el botón "Jugar" siguen como fallback. Online activo solo con `isMyTurn && phase === 'choose_action'`.
 
+### Dark Fantasy profundo (V4.1)
+- **Análisis profundo de las 7 refs** (Pillow, 16 colores + brillo por regiones): el ADN NO es solo "frío", es **profundidades casi negras + glow central (6/7 imgs, centro 15-55 pts más brillante) + un único acento cálido de vela** (familia `#dca26c`/`#f3d19c`/`#a39d56`). Resultado: **capa doble fría + vela** detrás del enemigo, intensidad de ruinas **media**, aplicado a **toda la app**.
+- **Tokens nuevos**: `--ember #e8ba84`/`--ember-glow rgba(232,186,132,.16)` (único cálido), `--vignette rgba(1,3,6,.55)`, `--panel-bg rgba(13,20,30,.82)`, `--stone-edge rgba(159,196,232,.3)`. Base oscurecida: `--bg #06090f`, `--bg-deep #030509`, `--felt #141d2b`, `--felt-dark #0d1420`.
+- **Texturas SVG data-URI** en `:root` (sin assets externos): `--tex-grain` (feTurbulence + feColorMatrix a **alpha bajo** — el speckle opaco original aplastaba todo: carta 240→53 lum, corregido), `--tex-block` (bloques de piedra ashlar), `--tex-battlement` (almenas; rellenos 0.55-0.72, sino la viñeta las vuelve invisibles), `--frame-ruin` (marco `border-image` 9-slice de piedra astillada; requiere `border-radius:0`).
+- **Atmósfera**: `.game-screen::before` = glow hielo + velo vela + viñeta + grano; `.game-screen::after` = niebla baja sobre la mano; `.screen::after` (no-juego) = viñeta + grano. Todos `pointer-events:none`.
+- **Paneles/botones**: `--panel-bg` + `--tex-block` + bisel `inset`; `.enemy-panel` con almenas en `::before`; `.overlay-card`/`.rules-panel`/`.step-banner-body` con `--frame-ruin`.
+- **Fix StepBanner expandido**: antes el contenido quedaba detrás de las cartas (`.hand-area` `justify-content:flex-end` desbordaba hacia arriba sobre un panel casi transparente). Fix: `.step-banner {position:relative;z-index:20}`, `.step-banner-body` con fondo de piedra sólido + `--frame-ruin` + `max-height:42dvh`, `.hand-area {overflow:hidden}`, y **auto-colapso** con `key={`${s.turnNumber}-${s.phase}`}` en `GameScreen`/`OnlineGameScreen`.
+- **Skill** `.opencode/skills/dark-fantasy-theme/SKILL.md`: tokens, texturas, reglas do/don't y método de verificación (muestreo de píxeles).
+
 ## Cómo verificar cambios
 
 - Tras tocar web: `pnpm --filter @regicide/web build` y probar contra el server local en :3001 (el server sirve el build). Para el flujo online: 2 pestañas en `http://localhost:3001/`.
-- Repro CDP headless disponible (`/tmp/cdp_solo.js`, Chrome con `--remote-debugging-port=9222`) que automatiza solo: home → setup → tablero → screenshot → drag & drop. Revisa que el server :3001 esté vivo antes.
+- Repro CDP headless disponible (`/tmp/cdp_v5.js`, Chrome con `--remote-debugging-port=9222`) que automatiza solo: home → setup → tablero → screenshot → abrir/cerrar "Detalles" del StepBanner (valida con `elementFromPoint` que el panel queda sobre las cartas) → drag & drop. El server :3001 debe estar vivo; Chrome con `--user-data-dir` propio para no chocar con otra instancia.
 - Para prod: push a `main` → Render auto-deploy → https://regicide-web.onrender.com/ (esperar cold start).

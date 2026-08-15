@@ -58,6 +58,15 @@ Cambios visuales y de persistencia de la última iteración:
 - **Tabla de posiciones persistente**: los resultados se guardan en una
   base de datos PostgreSQL (Supabase) vía `DATABASE_URL`; si no hay base,
   cae a un archivo JSON local.
+- **Dark Fantasy profundo**: análisis de las referencias de arte reveló la
+  firma real del género — profundidades casi negras, un resplandor central
+  (capa de hielo + velo de vela) detrás del enemigo, viñeta y niebla — más
+  formas de castillo en ruinas: almenas en los paneles, marcos de piedra
+  astillada (`border-image`), textura de bloques y grano. Todo con SVG
+  embebido, sin assets externos.
+- **Banner de paso corregido**: el panel desplegado ya no queda detrás de
+  las cartas (z-index + fondo sólido de piedra + recorte de la mano) y se
+  colapsa solo al jugar.
 
 El motor implementa las reglas del juego con **IDs trazables `[R-x]`** que
 remiten a la fuente oficial (`docs/rules-source.md`, extracto del PDF de
