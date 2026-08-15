@@ -43,6 +43,7 @@ export function makeState(overrides: Partial<GameState> = {}): GameState {
     gameOver: false,
     result: null,
     consecutiveYields: 0,
+    enemiesDefeated: 0,
     jestersLeft: 2,
     jestersUsed: 0,
     turnNumber: 1,

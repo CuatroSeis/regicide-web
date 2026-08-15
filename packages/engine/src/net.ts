@@ -23,6 +23,7 @@ export interface PublicGameState {
   readonly gameOver: boolean;
   readonly result: GameResult | null;
   readonly consecutiveYields: number;
+  readonly enemiesDefeated: number;
   readonly jestersLeft: number;
   readonly jestersUsed: number;
   readonly turnNumber: number;
@@ -55,6 +56,7 @@ export function publicSnapshot(state: GameState): PublicGameState {
     gameOver: state.gameOver,
     result: state.result,
     consecutiveYields: state.consecutiveYields,
+    enemiesDefeated: state.enemiesDefeated,
     jestersLeft: state.jestersLeft,
     jestersUsed: state.jestersUsed,
     turnNumber: state.turnNumber,

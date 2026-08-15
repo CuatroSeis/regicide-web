@@ -132,6 +132,7 @@ export function playCards(state: GameState, cardIds: readonly string[]): PlayRes
   let victory = false;
 
   if (enemyDefeated) {
+    state.enemiesDefeated += 1;
     // [R-18](i): kill exacto → boca abajo al tope de la Taverna; si no, al descarte.
     if (exactKill) {
       state.tavernDeck.push(state.enemy.card);

@@ -68,6 +68,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     gameOver: false,
     result: null,
     consecutiveYields: 0,
+    enemiesDefeated: 0,
     jestersLeft: playerCount === 1 ? 2 : 0,
     jestersUsed: 0,
     turnNumber: 1,

@@ -66,6 +66,8 @@ export interface GameState {
   result: GameResult | null;
   /** Rendimientos consecutivos de los últimos turnos [R-9]. */
   consecutiveYields: number;
+  /** Enemigos del castillo derrotados (12 en victoria: 4J/4Q/4K). */
+  enemiesDefeated: number;
   /** Jesters disponibles para el poder de solo [R-22]. */
   jestersLeft: number;
   /** Jesters usados (determina nivel de victoria [R-23]). */
