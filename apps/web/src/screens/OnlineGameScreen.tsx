@@ -12,6 +12,8 @@ import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
 import { CardDragGhost } from '../components/CardDragGhost';
 import { useCardDrag } from '../hooks/useCardDrag';
+import { useFitWidth } from '../hooks/useFitWidth';
+import { handMetrics } from '../lib/handMetrics';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface OnlineGameScreenProps extends ScreenProps {
@@ -82,6 +84,8 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const handRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
+  const handWidth = useFitWidth(handRef);
+  const handCardMetrics = handMetrics(handWidth, s.hand.length);
 
   const travelSnapshot = useMemo<CardTravelSnapshot>(
     () => ({
@@ -130,122 +134,125 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
       <CardTravel snapshot={travelSnapshot} zones={zones} />
 
-      <header className="game-header">
-        <div className="header-left">
-          <button
-            type="button"
-            className="back-button"
-            onClick={() => {
-              online.leaveRoom();
-              onNavigate('home');
-            }}
+      <div className="game-inner">
+        <header className="game-header">
+          <div className="header-left">
+            <button
+              type="button"
+              className="back-button"
+              onClick={() => {
+                online.leaveRoom();
+                onNavigate('home');
+              }}
+            >
+              {t('menu')}
+            </button>
+            <span className="meta">{t('roomCodeX', { code: online.room?.code ?? '' })}</span>
+          </div>
+          <DeckChip label={t('castle')} value={s.castleCount} ref={castleRef} />
+          <div className="header-right" />
+        </header>
+
+        <EnemyPanel
+          enemy={s.enemy}
+          turnNumber={s.turnNumber}
+          jestersLeft={s.jestersLeft}
+          lastDamageDealt={s.lastDamageDealt}
+          tavernCount={s.tavernCount}
+          discardCount={s.discardPile.length}
+          discardTopCard={s.discardPile[s.discardPile.length - 1]}
+          deckRef={deckRef}
+          discardRef={discardRef}
+          ref={enemyRef}
+        />
+
+        <div className="table-area">
+          <span className="zone-label">{t('table')}</span>
+          <div
+            className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
+            ref={tableRef}
           >
-            {t('menu')}
-          </button>
-          <span className="meta">{t('roomCodeX', { code: online.room?.code ?? '' })}</span>
+            {s.table.length === 0 ? (
+              <span className="muted">{t('playEmptyHint')}</span>
+            ) : (
+              s.table.map(({ card, playerId }) => (
+                <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
+              ))
+            )}
+          </div>
         </div>
-        <DeckChip label={t('castle')} value={s.castleCount} ref={castleRef} />
-        <div className="header-right" />
-      </header>
 
-      <EnemyPanel
-        enemy={s.enemy}
-        turnNumber={s.turnNumber}
-        jestersLeft={s.jestersLeft}
-        lastDamageDealt={s.lastDamageDealt}
-        tavernCount={s.tavernCount}
-        discardCount={s.discardPile.length}
-        discardTopCard={s.discardPile[s.discardPile.length - 1]}
-        deckRef={deckRef}
-        discardRef={discardRef}
-        ref={enemyRef}
-      />
+        {online.error && <div className="error-banner">{online.error}</div>}
 
-      <div className="table-area">
-        <span className="zone-label">{t('table')}</span>
-        <div
-          className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
-          ref={tableRef}
-        >
-          {s.table.length === 0 ? (
-            <span className="muted">{t('playEmptyHint')}</span>
-          ) : (
-            s.table.map(({ card, playerId }) => (
-              <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
-            ))
+        {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
+
+        <div className="hand-area" ref={handRef}>
+          <span className="zone-label">
+            {t('hand', { hand: s.hand.length, max: me?.maxHandSize ?? 0 })}
+          </span>
+          <CardFan
+            cards={[...s.hand]}
+            width={handCardMetrics.width}
+            overlap={handCardMetrics.overlap}
+            selectedIds={online.selected}
+            onSelect={s.isMyTurn ? online.toggle : undefined}
+            onCardPointerDown={onCardPointerDown}
+            suppressClick={drag !== null}
+          />
+        </div>
+
+        <div className="controls">
+          {s.phase === 'choose_action' && s.isMyTurn && (
+            <>
+              <button
+                type="button"
+                className="menu-button"
+                disabled={!online.canPlay}
+                onClick={online.play}
+              >
+                {t('play')}
+              </button>
+              <button
+                type="button"
+                className="menu-button"
+                disabled={!canYieldNow}
+                onClick={online.yieldTurn}
+              >
+                {t('yield')}
+              </button>
+              {online.canPlayJester && (
+                <button type="button" className="menu-button" onClick={() => setJesterPick(true)}>
+                  {t('jester')}
+                </button>
+              )}
+            </>
+          )}
+          {isSuffering && s.isMyTurn && (
+            <button
+              type="button"
+              className="menu-button"
+              disabled={!online.canDiscard}
+              onClick={online.discard}
+            >
+              {t('coverDamage')}
+            </button>
+          )}
+          {(s.phase === 'choose_action' || isSuffering) && online.selected.length > 0 && (
+            <button type="button" className="back-button" onClick={online.clearSelection}>
+              {t('clear')}
+            </button>
           )}
         </div>
-      </div>
-
-      {online.error && <div className="error-banner">{online.error}</div>}
-
-      {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
-
-      <div className="hand-area" ref={handRef}>
-        <span className="zone-label">
-          {t('hand', { hand: s.hand.length, max: me?.maxHandSize ?? 0 })}
-        </span>
-        <CardFan
-          cards={[...s.hand]}
-          width={104}
-          selectedIds={online.selected}
-          onSelect={s.isMyTurn ? online.toggle : undefined}
-          onCardPointerDown={onCardPointerDown}
-          suppressClick={drag !== null}
-        />
       </div>
 
       {drag && (
         <CardDragGhost
           cards={s.hand.filter((card) => drag.ids.includes(card.id))}
-          width={104}
+          width={handCardMetrics.width}
           x={drag.x}
           y={drag.y}
         />
       )}
-
-      <div className="controls">
-        {s.phase === 'choose_action' && s.isMyTurn && (
-          <>
-            <button
-              type="button"
-              className="menu-button"
-              disabled={!online.canPlay}
-              onClick={online.play}
-            >
-              {t('play')}
-            </button>
-            <button
-              type="button"
-              className="menu-button"
-              disabled={!canYieldNow}
-              onClick={online.yieldTurn}
-            >
-              {t('yield')}
-            </button>
-            {online.canPlayJester && (
-              <button type="button" className="menu-button" onClick={() => setJesterPick(true)}>
-                {t('jester')}
-              </button>
-            )}
-          </>
-        )}
-        {isSuffering && s.isMyTurn && (
-          <button
-            type="button"
-            className="menu-button"
-            disabled={!online.canDiscard}
-            onClick={online.discard}
-          >
-            {t('coverDamage')}
-          </button>
-        )}
-        {(s.phase === 'choose_action' || isSuffering) && online.selected.length > 0 && (
-          <button type="button" className="back-button" onClick={online.clearSelection}>
-            {t('clear')}
-          </button>
-        )}
-      </div>
 
       {jesterPick && (
         <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="jester-pick-title">

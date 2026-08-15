@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { canYield, effectiveAttack, gameSummary } from '@regicide/engine';
 import { useGame } from '../hooks/useGame';
 import { useCardDrag } from '../hooks/useCardDrag';
+import { useFitWidth } from '../hooks/useFitWidth';
+import { handMetrics } from '../lib/handMetrics';
 import { CardDragGhost } from '../components/CardDragGhost';
 import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
@@ -73,6 +75,8 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
   const handRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const enemyRef = useRef<HTMLDivElement>(null);
+  const handWidth = useFitWidth(handRef);
+  const handCardMetrics = handMetrics(handWidth, player.hand.length);
 
   const travelSnapshot = useMemo<CardTravelSnapshot>(
     () => ({
@@ -117,117 +121,120 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
 
       <CardTravel snapshot={travelSnapshot} zones={zones} />
 
-      <header className="game-header">
-        <div className="header-left">
-          <button type="button" className="back-button" onClick={onHome}>
-            {t('menu')}
-          </button>
-          <span className="meta">
-            {t('playingAs', { name: setup.name })} · {t('seedLabel', { seed: setup.seed })}
-          </span>
+      <div className="game-inner">
+        <header className="game-header">
+          <div className="header-left">
+            <button type="button" className="back-button" onClick={onHome}>
+              {t('menu')}
+            </button>
+            <span className="meta">
+              {t('playingAs', { name: setup.name })} · {t('seedLabel', { seed: setup.seed })}
+            </span>
+          </div>
+          <DeckChip label={t('castle')} value={s.castleDeck.length} ref={castleRef} />
+          <div className="header-right" />
+        </header>
+
+        <EnemyPanel
+          enemy={s.enemy}
+          turnNumber={s.turnNumber}
+          jestersLeft={s.jestersLeft}
+          lastDamageDealt={s.lastDamageDealt}
+          tavernCount={s.tavernDeck.length}
+          discardCount={s.discardPile.length}
+          discardTopCard={s.discardPile[s.discardPile.length - 1]}
+          deckRef={deckRef}
+          discardRef={discardRef}
+          ref={enemyRef}
+        />
+
+        <div className="table-area">
+          <span className="zone-label">{t('table')}</span>
+          <div
+            className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
+            ref={tableRef}
+          >
+            {s.table.length === 0 ? (
+              <span className="muted">{t('playEmptyHint')}</span>
+            ) : (
+              s.table.map(({ card, playerId }) => (
+                <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
+              ))
+            )}
+          </div>
         </div>
-        <DeckChip label={t('castle')} value={s.castleDeck.length} ref={castleRef} />
-        <div className="header-right" />
-      </header>
 
-      <EnemyPanel
-        enemy={s.enemy}
-        turnNumber={s.turnNumber}
-        jestersLeft={s.jestersLeft}
-        lastDamageDealt={s.lastDamageDealt}
-        tavernCount={s.tavernDeck.length}
-        discardCount={s.discardPile.length}
-        discardTopCard={s.discardPile[s.discardPile.length - 1]}
-        deckRef={deckRef}
-        discardRef={discardRef}
-        ref={enemyRef}
-      />
+        {game.error && <div className="error-banner">{game.error}</div>}
 
-      <div className="table-area">
-        <span className="zone-label">{t('table')}</span>
-        <div
-          className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
-          ref={tableRef}
-        >
-          {s.table.length === 0 ? (
-            <span className="muted">{t('playEmptyHint')}</span>
-          ) : (
-            s.table.map(({ card, playerId }) => (
-              <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
-            ))
+        {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
+
+        <div className="hand-area" ref={handRef}>
+          <span className="zone-label">
+            {t('hand', { hand: player.hand.length, max: player.maxHandSize })}
+          </span>
+          <CardFan
+            cards={player.hand}
+            width={handCardMetrics.width}
+            overlap={handCardMetrics.overlap}
+            selectedIds={game.selected}
+            onSelect={game.toggle}
+            onCardPointerDown={onCardPointerDown}
+            suppressClick={drag !== null}
+          />
+        </div>
+
+        <div className="controls">
+          {s.phase === 'choose_action' && (
+            <>
+              <button
+                type="button"
+                className="menu-button"
+                disabled={!game.canPlay}
+                onClick={game.play}
+              >
+                {t('play')}
+              </button>
+              <button
+                type="button"
+                className="menu-button"
+                disabled={!canYieldNow}
+                onClick={game.yieldTurn}
+              >
+                {t('yield')}
+              </button>
+            </>
+          )}
+          {isSuffering && (
+            <button
+              type="button"
+              className="menu-button"
+              disabled={!game.canDiscard}
+              onClick={game.discard}
+            >
+              {t('coverDamage')}
+            </button>
+          )}
+          {showJester && (
+            <button type="button" className="menu-button" onClick={game.jester}>
+              {t('jester')} ({s.jestersLeft})
+            </button>
+          )}
+          {(s.phase === 'choose_action' || isSuffering) && game.selected.length > 0 && (
+            <button type="button" className="back-button" onClick={game.clearSelection}>
+              {t('clear')}
+            </button>
           )}
         </div>
-      </div>
-
-      {game.error && <div className="error-banner">{game.error}</div>}
-
-      {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
-
-      <div className="hand-area" ref={handRef}>
-        <span className="zone-label">
-          {t('hand', { hand: player.hand.length, max: player.maxHandSize })}
-        </span>
-        <CardFan
-          cards={player.hand}
-          width={104}
-          selectedIds={game.selected}
-          onSelect={game.toggle}
-          onCardPointerDown={onCardPointerDown}
-          suppressClick={drag !== null}
-        />
       </div>
 
       {drag && (
         <CardDragGhost
           cards={player.hand.filter((card) => drag.ids.includes(card.id))}
-          width={104}
+          width={handCardMetrics.width}
           x={drag.x}
           y={drag.y}
         />
       )}
-
-      <div className="controls">
-        {s.phase === 'choose_action' && (
-          <>
-            <button
-              type="button"
-              className="menu-button"
-              disabled={!game.canPlay}
-              onClick={game.play}
-            >
-              {t('play')}
-            </button>
-            <button
-              type="button"
-              className="menu-button"
-              disabled={!canYieldNow}
-              onClick={game.yieldTurn}
-            >
-              {t('yield')}
-            </button>
-          </>
-        )}
-        {isSuffering && (
-          <button
-            type="button"
-            className="menu-button"
-            disabled={!game.canDiscard}
-            onClick={game.discard}
-          >
-            {t('coverDamage')}
-          </button>
-        )}
-        {showJester && (
-          <button type="button" className="menu-button" onClick={game.jester}>
-            {t('jester')} ({s.jestersLeft})
-          </button>
-        )}
-        {(s.phase === 'choose_action' || isSuffering) && game.selected.length > 0 && (
-          <button type="button" className="back-button" onClick={game.clearSelection}>
-            {t('clear')}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
