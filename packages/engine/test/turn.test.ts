@@ -271,7 +271,7 @@ describe('discardToSurvive [R-19]', () => {
     const state = makeState({
       phase: 'suffer_damage',
       enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
-      players: [makePlayer('p0', { hand: [numberCard('hearts', 4), numberCard('spades', 6)] }), makePlayer('p1')],
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 4), numberCard('spades', 6)] }), makePlayer('p1', { hand: [numberCard('hearts', 2)] })],
     });
     discardToSurvive(state, [id(numberCard('hearts', 4)), id(numberCard('spades', 6))]);
     expect(state.gameOver).toBe(false);
@@ -331,7 +331,7 @@ describe('discardToSurvive [R-19]', () => {
       table: [{ playerId: 'p0', card: numberCard('hearts', 5) }],
       players: [
         makePlayer('p0', { hand: [numberCard('hearts', 4), numberCard('spades', 6)] }),
-        makePlayer('p1'),
+        makePlayer('p1', { hand: [numberCard('clubs', 2)] }),
       ],
     });
     discardToSurvive(state, [id(numberCard('hearts', 4)), id(numberCard('spades', 6))]);
@@ -401,7 +401,10 @@ describe('playJester [R-20][R-21]', () => {
     const enemy = createEnemy(enemyCard(suit, 'J'));
     return makeState({
       enemy,
-      players: [makePlayer('p0', { hand: [jesterCard()] }), makePlayer('p1', { hand: [] })],
+      players: [
+        makePlayer('p0', { hand: [jesterCard()] }),
+        makePlayer('p1', { hand: [numberCard('hearts', 4)] }),
+      ],
     });
   }
 
@@ -486,24 +489,50 @@ describe('playJester [R-20][R-21]', () => {
 });
 
 describe('isStuck [R-25]', () => {
-  it('atascado solo con mano vacía y sin poder rendirse', () => {
-    const sinCartasSinYield = makeState({
-      players: [makePlayer('p0', { hand: [] }), makePlayer('p1')],
-      consecutiveYields: 1,
+  it('atascado con mano vacía y sin Jester, en solo y en multijugador', () => {
+    const solo = makeState({
+      jestersLeft: 0,
+      players: [makePlayer('p0', { hand: [] })],
     });
-    expect(isStuck(sinCartasSinYield)).toBe(true);
+    expect(isStuck(solo)).toBe(true);
 
-    const sinCartasConYield = makeState({
+    const multi = makeState({
       players: [makePlayer('p0', { hand: [] }), makePlayer('p1')],
-      consecutiveYields: 0,
     });
-    expect(isStuck(sinCartasConYield)).toBe(false);
+    expect(isStuck(multi)).toBe(true);
+  });
 
+  it('no atascado si la mano no está vacía', () => {
     const conCartas = makeState({
       players: [makePlayer('p0', { hand: [numberCard('hearts', 4)] }), makePlayer('p1')],
       consecutiveYields: 1,
     });
     expect(isStuck(conCartas)).toBe(false);
+  });
+
+  it('en solo con Jester disponible no está atascado (puede recargar [R-22])', () => {
+    const state = makeState({
+      jestersLeft: 1,
+      players: [makePlayer('p0', { hand: [] })],
+    });
+    expect(isStuck(state)).toBe(false);
+  });
+
+  it('no atascado si el ataque efectivo es 0 (rendirse es seguro, R-19)', () => {
+    const enemy = createEnemy(enemyCard('spades', 'J'));
+    enemy.spadeShield = 10; // ataque efectivo 0
+    const solo = makeState({
+      enemy,
+      jestersLeft: 0,
+      players: [makePlayer('p0', { hand: [] })],
+    });
+    expect(isStuck(solo)).toBe(false);
+
+    const multi = makeState({
+      enemy,
+      players: [makePlayer('p0', { hand: [] }), makePlayer('p1')],
+    });
+    expect(isStuck(multi)).toBe(false);
   });
 
   it('el turno que pasa a un jugador atascado dispara la derrota', () => {
@@ -520,5 +549,34 @@ describe('isStuck [R-25]', () => {
     expect(state.gameOver).toBe(true);
     expect(state.result).toBe('defeat');
     expect(state.currentPlayerIndex).toBe(1);
+  });
+
+  it('derrota automática si al revelar el siguiente enemigo la mano quedó vacía sin Jester [R-18](iv)', () => {
+    const enemy = createEnemy(enemyCard('spades', 'J'));
+    enemy.damageTaken = 15;
+    const state = makeState({
+      enemy,
+      castleDeck: [enemyCard('hearts', 'J')], // siguiente enemigo
+      jestersLeft: 0,
+      players: [makePlayer('p0', { hand: [enemyCard('hearts', 'K')] })], // valor 20 [R-24]
+    });
+    const result = playCards(state, [id(enemyCard('hearts', 'K'))]);
+    expect(result.enemyDefeated).toBe(true);
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.phase).toBe('game_over');
+  });
+
+  it('el refill del Jester con taverna vacía deja la mano vacía y dispara la derrota [R-22][R-25]', () => {
+    const state = makeState({
+      enemy: createEnemy(enemyCard('spades', 'J')), // ataque 10
+      jestersLeft: 1,
+      tavernDeck: [],
+      players: [makePlayer('p0', { hand: [numberCard('hearts', 4)] })],
+    });
+    jesterSolo(state);
+    expect(state.gameOver).toBe(true);
+    expect(state.result).toBe('defeat');
+    expect(state.jestersLeft).toBe(0);
   });
 });

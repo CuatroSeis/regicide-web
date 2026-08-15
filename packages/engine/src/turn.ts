@@ -151,6 +151,9 @@ export function playCards(state: GameState, cardIds: readonly string[]): PlayRes
     } else {
       state.enemy = createEnemy(next);
       state.phase = 'choose_action';
+      // [R-18](iv) el derrotador empieza un turno nuevo; si quedó sin mano y
+      // sin Jester, la partida termina en derrota automática [R-25].
+      checkStuck(state);
     }
   } else {
     state.phase = 'suffer_damage';
@@ -196,10 +199,18 @@ function finishTurn(state: GameState): void {
   checkStuck(state);
 }
 
-/** [R-25] El jugador actual sin cartas y sin poder rendirse pierde la partida. */
+/**
+ * [R-25] El jugador actual pierde la partida si no puede continuar: mano
+ * vacía (no puede jugar ni cubrir), sin Jester que lo rescate (solo: sin
+ * refill [R-22]; multiplayer: sin carta de Jester en mano, trivial con mano
+ * vacía) y ataque efectivo > 0 (si es 0, rendirse es seguro, R-19). Se
+ * declara de forma automática, sin exigir un clic en "Rendirse" previo.
+ */
 export function isStuck(state: GameState): boolean {
   const player = state.players[state.currentPlayerIndex]!;
-  return player.hand.length === 0 && !canYield(state);
+  if (player.hand.length > 0) return false;
+  if (state.players.length === 1 && state.jestersLeft > 0) return false;
+  return effectiveAttack(state.enemy) > 0;
 }
 
 function checkStuck(state: GameState): void {
@@ -207,7 +218,7 @@ function checkStuck(state: GameState): void {
     state.gameOver = true;
     state.result = 'defeat';
     state.phase = 'game_over';
-    state.log.push('Un jugador no puede jugar ni rendirse: derrota');
+    state.log.push('Un jugador se quedó sin cartas y sin Jester: derrota');
   }
 }
 
@@ -262,6 +273,7 @@ export function jesterSolo(state: GameState): void {
   state.jestersUsed += 1;
   state.log.push('El Jester se activa: mano descartada y recargada');
   checkCoverOrDie(state);
+  checkStuck(state);
 }
 
 /** [R-23] Nivel de victoria en solitario según Jesters usados. */
