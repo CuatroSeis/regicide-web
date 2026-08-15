@@ -143,7 +143,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
         </span>
         <CardFan
           cards={player.hand}
-          width={72}
+          width={104}
           selectedIds={game.selected}
           onSelect={game.toggle}
         />

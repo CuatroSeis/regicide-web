@@ -163,7 +163,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
         </span>
         <CardFan
           cards={[...s.hand]}
-          width={72}
+          width={104}
           selectedIds={online.selected}
           onSelect={s.isMyTurn ? online.toggle : undefined}
         />

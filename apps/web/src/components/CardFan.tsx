@@ -57,7 +57,7 @@ export function CardFan({
               opacity: 1,
               rotate: rotation,
               boxShadow: isSelected
-                ? '0 0 0 3px var(--gold), 0 10px 24px rgba(0,0,0,0.45)'
+                ? '0 0 0 3px var(--accent), 0 10px 24px rgba(0,0,0,0.45)'
                 : '0 2px 8px rgba(0,0,0,0.35)',
             }}
             transition={{ type: 'spring', stiffness: 120, damping: 14 }}

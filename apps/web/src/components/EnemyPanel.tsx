@@ -77,7 +77,7 @@ export function EnemyPanel({
   const pct = Math.max(0, Math.min(100, (remaining / enemy.maxHealth) * 100));
   const attack = effectiveAttack(enemy);
   const suit = enemy.card.suit!;
-  const barColor = pct > 60 ? '#7fd08a' : pct > 30 ? 'var(--gold)' : '#d15454';
+  const barColor = pct > 60 ? '#79d6b2' : pct > 30 ? 'var(--accent)' : '#e5737f';
 
   return (
     <div className="enemy-panel" ref={ref}>
