@@ -18,7 +18,9 @@
 ```bash
 pnpm typecheck                 # tsc en todos los paquetes
 pnpm lint                      # eslint
-pnpm --filter @regicide/server test    # vitest (20 tests)
+pnpm --filter @regicide/server test    # vitest (29 tests)
+pnpm --filter @regicide/engine test    # vitest (124 tests, coverage)
+pnpm --filter @regicide/web test       # vitest + Testing Library (23 tests)
 pnpm --filter @regicide/web build      # genera apps/web/dist
 pnpm --filter @regicide/server start   # server local en :3001 (tsx)
 pnpm --filter @regicide/web dev        # Vite dev en :5173
@@ -44,11 +46,16 @@ pnpm --filter @regicide/web dev        # Vite dev en :5173
 ## Arquitectura clave
 
 - `apps/server/src/rooms.ts` — `RoomManager`: salas en memoria, `playerOrder`, `applyAction` valida "es tu turno".
-- `apps/server/src/index.ts` — handlers socket: `room:create/join/rejoin/leave`, `game:start/play/yield/discard/play-jester`. `syncRoom` → `playerSnapshot` por jugador → emit `game:state-sync`. `withPlayerNames` reemplaza ids por nombres en el log. `socketByPlayerId` para enrutar estados.
+- `apps/server/src/leaderboard.ts` — tabla de posiciones: `LeaderboardStore`, `parseScoreInput`. Rutas API en `index.ts`.
+- `apps/server/src/index.ts` — handlers socket: `room:create/join/rejoin/leave`, `game:start/play/yield/discard/play-jester`. `syncRoom` → `playerSnapshot` por jugador → emit `game:state-sync`. `withPlayerNames` reemplaza ids por nombres en el log. `socketByPlayerId` para enrutar estados. API HTTP: `GET /api/leaderboard`, `POST /api/scores`.
 - `packages/engine/src/net.ts` — `PublicGameState` / `PlayerGameState`. **Datos ya disponibles en cada snapshot**: `players`, `currentPlayerIndex`, `castleCount`, `tavernCount`, `discardPile`, `table`, `enemy`, `phase`, `consecutiveYields`, `jestersLeft`, `turnNumber`, `log`, `hand`, `isMyTurn`.
 - `packages/engine/src/turn.ts` — reglas de turno (pasos 1-4, Jester R-20/21, rendirse R-9). Documentadas contra `docs/rules-source.md` (R-N).
+- `packages/engine/src/summary.ts` — `soloRank`/`gameSummary`/`SOLO_RANK_PRIORITY` (rangos para la tabla de posiciones).
 - `apps/web/src/hooks/useOnlineGame.ts` — sesión en `sessionStorage`, `io()` same-origin, estado `selected`/`selectionValue`/`canPlay`/`canDiscard`.
-- `apps/web/src/App.tsx` — navegación por `screen` (`home/room/rules/game/online-game`).
+- `apps/web/src/i18n/` — `translations.ts` (diccionario es/en/pt), `LanguageContext.tsx` (provider + `t()`), `LanguageSwitcher.tsx`. Todo texto visible sale de acá (`useLanguage`).
+- `apps/web/src/screens/SetupScreen.tsx` — nombre + semilla de la partida 1p (asocia el resultado a la tabla). `LeaderboardScreen.tsx` — tabla con Nombre | Dónde murió | Jesters | Rango.
+- `apps/web/src/lib/leaderboard.ts` — cliente `fetchLeaderboard`/`submitScore` contra `/api`.
+- `apps/web/src/App.tsx` — navegación por `screen` (`home/setup/room/rules/leaderboard/game/online-game`). `MotionConfig reducedMotion="user"` en `AppWithMotion` (importado por `main.tsx`).
 - `apps/web/src/screens/OnlineGameScreen.tsx` — tablero online (EnemyPanel, mesa, mano, controles, log).
 - `apps/web/src/index.css` — todos los estilos (variables en `:root`; tipografía base `Georgia` serif).
 
@@ -64,17 +71,31 @@ Mejoras visuales y de legibilidad implementadas (commits `599cbc9`, `013c298`, `
 - **Layout mobile compacto** a una pantalla (commit `d3038aa`).
 - **Fix derrota en Paso 4** (`f0b32ad`): si la mano no alcanza a cubrir el ataque efectivo, la partida termina en derrota.
 
-## V3 (pendiente)
+## V3 (hecho)
 
 ### Derrota automática al quedarse sin cartas y sin Jester [R-25]
 - **Problema**: si el jugador activo empezaba su turno con la mano vacía, en solo el juego nunca disparaba la derrota (en solo `canYield` siempre es `true`, así que `isStuck` jamás se activaba) y en multiplayer requería un clic extra en "Rendirse".
-- **Solución (ya en código, falta desplegar)**: `isStuck` en `packages/engine/src/turn.ts` ahora se define como **mano vacía + sin Jester que rescate (solo: `jestersLeft === 0`; multiplayer: sin carta de Jester en mano) + ataque efectivo > 0** (si es 0, rendirse es seguro, R-19). Se dispara `checkStuck` de forma automática en:
+- **Solución (ya en código)**: `isStuck` en `packages/engine/src/turn.ts` ahora se define como **mano vacía + sin Jester que rescate (solo: `jestersLeft === 0`; multiplayer: sin carta de Jester en mano) + ataque efectivo > 0** (si es 0, rendirse es seguro, R-19). Se dispara `checkStuck` de forma automática en:
   - inicio/fin de turno (`finishTurn`),
   - `playCards` al revelar el enemigo siguiente (R-18 iv),
   - `jesterSolo` (recarga con taverna vacía),
   - `playJester` (multiplayer).
 - Cartel actualizado en `VictoryOverlay.tsx`: «Te quedaste sin cartas y sin Jester para continuar. El castillo gana. [R-25]».
 - Ojo: los tests de `isStuck` (`turn.test.ts`) asumen la semántica nueva (mano vacía + ataque>0 = derrota automática, incluso si el jugador podría rendirse).
+
+### i18n (es/en/pt), tabla de posiciones y accesibilidad
+- **i18n con React Context**: `apps/web/src/i18n/translations.ts` (diccionario `es`/`en`/`pt`, `TranslationKey` derivado de `es`, `interpolate` para `{param}`) + `LanguageContext.tsx` (provider, `useLanguage()`/`t()`, persiste `localStorage('regicide.lang')`, sincroniza `document.documentElement.lang`) + `LanguageSwitcher.tsx`. Todos los screens/components usan `t()`. **Limitación V3**: el `log` del engine y los acks de error del server quedan en español.
+- Las claves con HTML (p. ej. `rulesStep1`) se renderizan con `dangerouslySetInnerHTML` (contenido propio estático, sin input de usuario).
+- **Rango en solitario** (`packages/engine/src/summary.ts`): victoria → Oro/Plata/Bronce según Jesters usados (R-23); derrota → tier temático por enemigos derrotados: `peasant` 0-2, `squire` 3-5, `knight` 6-8, `baron` 9-11 (castillo = 12 enemigos, `CASTLE_ENEMY_COUNT`). `gameSummary(state)` acepta `GameState` o `PublicGameState` (tipo `SummarySource`).
+- **Tabla de posiciones** (server-side, sin cuentas):
+  - `apps/server/src/leaderboard.ts` — `LeaderboardStore` (memoria + persistencia JSON best-effort), `parseScoreInput` valida/saneja nombre ≤20, seed uint32, result, enemiesDefeated 0-12, jestersUsed 0-2, turnNumber ≥1, enemyCard. Orden: `SOLO_RANK_PRIORITY` desc → enemiesDefeated desc → turnNumber asc → createdAt. Límite `LEADERBOARD_MAX = 50`.
+  - `apps/server/src/index.ts` — `GET /api/leaderboard?limit=50`, `POST /api/scores` (400 en payload inválido; **el server calcula el rango**, no confía en el cliente). `LEADERBOARD_FILE` env (default `apps/server/data/leaderboard.json`).
+  - `apps/web/src/lib/leaderboard.ts` — `fetchLeaderboard`/`submitScore` (mismo origen `/api`, sin CORS). Vite proxy `/api` → :3001 (dev).
+  - Flujo 1p: `SetupScreen` pide el nombre (prefill `localStorage('regicide.name')`) y genera la **semilla** = id único de la partida. `App.tsx` guarda `{name, seed}` y pasa `key={seed}` a `GameScreen` (remount al re-jugar). Al terminar, `GameScreen` hace `submitScore` (best-effort). `LeaderboardScreen` muestra Nombre | Dónde murió | Jesters | Rango (en derrota «{enemigo} · {N}/12»).
+- **Accesibilidad**: `CardFan` como `<button>` con `aria-pressed` y teclado (tabIndex -1 si no es seleccionable); `:focus-visible` anillo dorado; `aria-live="polite"` en log/phase-hint/turn-indicator; overlays con `role="dialog"`+`aria-modal`+`aria-labelledby`; `MotionConfig reducedMotion="user"` + `@media (prefers-reduced-motion: reduce)`; landmarks (`<label htmlFor>`, tabla con `<th scope>`); `CardFace` con `aria-label` localizado; `ErrorBoundary` traducido vía `static contextType`.
+- **Tests web** (vitest + jsdom + Testing Library): `pnpm --filter @regicide/web test` (23 tests). Infra: `vitest.config.ts` (jsdom, `src/test/setup.ts`), helper `src/test/renderWithLang.tsx` (los componentes usan `useLanguage`). Cobertura: paridad de claves y placeholders entre idiomas, `interpolate`, leaderboard (fetch mocado), accesibilidad de `CardFan`, HomeScreen (menú + switch de idioma), flujo de `SetupScreen`, LeaderboardScreen (filas, vacío, error).
+
+**Caveat persistencia**: el disco de Render free tier es efímero → la tabla de posiciones se pierde en cold start/redeploy (igual que las salas). Si hace falta persistencia real, usar un servicio externo o volumen.
 
 ## Cómo verificar cambios
 

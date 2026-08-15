@@ -20,3 +20,6 @@ build/
 
 # Cobertura de tests
 coverage/
+
+# Datos locales del servidor (tabla de posiciones)
+apps/server/data/
