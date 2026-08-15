@@ -1,14 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;0,900;1,400&display=swap');
 
 :root {
-  --bg: #0b1018;
-  --bg-deep: #060a10;
-  --felt: #16222e;
-  --felt-dark: #101a24;
+  --bg: #06090f;
+  --bg-deep: #030509;
+  --felt: #141d2b;
+  --felt-dark: #0d1420;
   --accent: #9fc4e8;
   --ivory: #e4ecf5;
   --muted: #8b97a8;
   --accent-glow: rgba(159, 196, 232, 0.25);
+  /* Vela (único acento cálido, family #dca26c/#f3d19c de las refs). */
+  --ember: #e8ba84;
+  --ember-glow: rgba(232, 186, 132, 0.16);
+  --vignette: rgba(1, 3, 6, 0.55);
+  --panel-bg: rgba(13, 20, 30, 0.82);
+  --stone-edge: rgba(159, 196, 232, 0.3);
+
+  /* Texturas SVG embebidas (sin assets externos). */
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.14 0 0 0 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  --tex-block: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='32' viewBox='0 0 64 32'%3E%3Cpath d='M0 .5h64M0 16.5h64' stroke='rgba%28159,196,232,0.16%29' stroke-width='1' fill='none'/%3E%3Cpath d='M16 .5v16M48 .5v16M0 16.5v16M32 16.5v16' stroke='rgba%28159,196,232,0.12%29' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+  --tex-battlement: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='10' viewBox='0 0 180 10'%3E%3Crect y='2' width='180' height='8' fill='rgba%28159,196,232,0.55%29'/%3E%3Crect x='0' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3Crect x='30' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3Crect x='60' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3Crect x='90' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3Crect x='120' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3Crect x='150' y='0' width='12' height='4' fill='rgba%28159,196,232,0.72%29'/%3E%3C/svg%3E");
+  --frame-ruin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90' viewBox='0 0 90 90'%3E%3Cg fill='none' stroke='rgba%28159,196,232,0.5%29' stroke-width='2'%3E%3Cpath d='M1 1h88M1 1v88M89 1v88M1 89h88'/%3E%3C/g%3E%3Cg fill='none' stroke='rgba%28159,196,232,0.22%29' stroke-width='1.5'%3E%3Cpath d='M0 14h90M14 0v90M76 0v90M0 76h90'/%3E%3C/g%3E%3Cg fill='none' stroke='rgba%284,7,12,0.95%29' stroke-width='2'%3E%3Cpath d='M4 4h9M4 4v9'/%3E%3Cpath d='M86 4h-9M86 4v9'/%3E%3Cpath d='M4 86h9M4 86v-9'/%3E%3Cpath d='M86 86h-9M86 86v-9'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 * {
@@ -26,13 +38,15 @@ body {
   font-family: 'Alegreya', 'Georgia', 'Times New Roman', serif;
   color: var(--ivory);
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(30, 48, 68, 0.6), transparent 62%),
-    radial-gradient(ellipse at 50% 115%, rgba(159, 196, 232, 0.07), transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(30, 48, 68, 0.5), transparent 60%),
+    radial-gradient(ellipse at 50% 118%, rgba(159, 196, 232, 0.06), transparent 55%),
     linear-gradient(180deg, var(--bg), var(--bg-deep));
   min-height: 100vh;
 }
 
 .screen {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -41,6 +55,19 @@ body {
   gap: 1.75rem;
   padding: 2rem 1.25rem;
   text-align: center;
+}
+
+/* Atmósfera base (no-juego): viñeta + grano de piedra sobre el contenido. */
+.screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 130% 90% at 50% 42%, rgba(1, 3, 6, 0) 55%, var(--vignette) 100%),
+    var(--tex-grain);
+  background-size: auto, 180px 180px;
 }
 
 .title {
@@ -73,8 +100,8 @@ body {
   display: inline-flex;
   gap: 0.35rem;
   padding: 0.25rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(228, 236, 245, 0.18);
+  background: rgba(13, 20, 30, 0.6);
+  border: 1px solid var(--stone-edge);
   border-radius: 999px;
 }
 
@@ -106,11 +133,19 @@ body {
   font-size: 1.15rem;
   letter-spacing: 0.06em;
   color: var(--ivory);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(228, 236, 245, 0.22);
+  background:
+    var(--tex-block),
+    linear-gradient(180deg, rgba(159, 196, 232, 0.1), rgba(2, 4, 8, 0.5)),
+    var(--panel-bg);
+  background-size: 64px 32px, auto, auto;
+  border: 1px solid var(--stone-edge);
   border-radius: 12px;
   padding: 0.9rem 1.5rem;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(228, 236, 245, 0.1),
+    inset 0 -5px 12px rgba(0, 0, 0, 0.5),
+    0 3px 12px rgba(0, 0, 0, 0.35);
   transition:
     border-color 0.2s ease,
     color 0.2s ease,
@@ -148,11 +183,14 @@ body {
   font-family: inherit;
   font-size: 0.95rem;
   color: var(--ivory);
-  background: transparent;
-  border: 1px solid rgba(228, 236, 245, 0.25);
+  background: rgba(13, 20, 30, 0.6);
+  border: 1px solid var(--stone-edge);
   border-radius: 999px;
   padding: 0.5rem 1.25rem;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(228, 236, 245, 0.08),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.4);
   transition: border-color 0.2s ease, color 0.2s ease;
 }
 
@@ -165,11 +203,18 @@ body {
   max-width: 42rem;
   width: min(92vw, 42rem);
   text-align: left;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(228, 236, 245, 0.14);
-  border-radius: 16px;
-  padding: 1.75rem;
+  background:
+    var(--tex-block),
+    linear-gradient(180deg, rgba(20, 29, 43, 0.9), var(--felt-dark));
+  background-size: 64px 32px, auto;
+  border: 14px solid transparent;
+  border-image: var(--frame-ruin) 14 round;
+  border-radius: 0;
+  padding: 1.6rem;
   line-height: 1.65;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.45),
+    0 14px 34px rgba(0, 0, 0, 0.4);
 }
 
 .rules-panel h2 {
@@ -201,6 +246,35 @@ body {
   padding: 0.7rem 1.25rem;
 }
 
+/* Luz central detrás del enemigo (firma de las refs): capa hielo + velo de
+   vela, viñeta y grano de piedra sobre todo el tablero. */
+.game-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 62% 42% at 50% 34%, rgba(159, 196, 232, 0.1), transparent 68%),
+    radial-gradient(ellipse 44% 30% at 50% 30%, var(--ember-glow), transparent 72%),
+    radial-gradient(ellipse 130% 100% at 50% 50%, rgba(1, 3, 6, 0) 52%, var(--vignette) 100%),
+    var(--tex-grain);
+  background-size: auto, auto, auto, 180px 180px;
+}
+
+/* Niebla baja sobre la mano + grano. */
+.game-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 6% at 28% 97%, rgba(159, 196, 232, 0.08), transparent 70%),
+    radial-gradient(ellipse 72% 7% at 70% 93%, rgba(120, 140, 170, 0.1), transparent 70%),
+    linear-gradient(180deg, transparent 78%, rgba(120, 140, 170, 0.05) 94%, rgba(120, 140, 170, 0.09) 100%);
+}
+
 .game-header {
   flex-shrink: 0;
   width: min(56rem, 96vw);
@@ -229,8 +303,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(228, 236, 245, 0.18);
+  background: rgba(13, 20, 30, 0.7);
+  border: 1px solid var(--stone-edge);
   border-radius: 999px;
   padding: 0.32rem 1rem;
   font-size: clamp(0.9rem, 2.2vw, 1.05rem);
@@ -258,16 +332,39 @@ body {
 }
 
 .enemy-panel {
+  position: relative;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(228, 236, 245, 0.14);
+  background:
+    var(--tex-block),
+    linear-gradient(180deg, rgba(159, 196, 232, 0.05), rgba(2, 4, 8, 0.4)),
+    var(--panel-bg);
+  background-size: 64px 32px, auto, auto;
+  border: 1px solid var(--stone-edge);
   border-radius: 16px;
   padding: 0.8rem 1.5rem 0.9rem;
   width: min(56rem, 96vw);
+  box-shadow:
+    inset 0 1px 0 rgba(228, 236, 245, 0.08),
+    inset 0 -8px 22px rgba(0, 0, 0, 0.45),
+    0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Almenas de castillo sobre el panel del enemigo. */
+.enemy-panel::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 24px;
+  right: 24px;
+  height: 10px;
+  background: var(--tex-battlement) repeat-x top left;
+  background-size: 180px 10px;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.65));
+  pointer-events: none;
 }
 
 .enemy-health-row {
@@ -330,7 +427,7 @@ body {
   color: var(--accent);
   min-width: 2.4rem;
   text-align: center;
-  background: rgba(6, 10, 16, 0.85);
+  background: rgba(2, 4, 8, 0.9);
   border: 1px solid rgba(159, 196, 232, 0.45);
   border-radius: 999px;
   padding: 0.05rem 0.6rem;
@@ -490,6 +587,7 @@ body {
 .hand-area {
   flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
@@ -512,10 +610,14 @@ body {
   min-height: 84px;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(228, 236, 245, 0.12);
+  background:
+    var(--tex-block),
+    rgba(13, 20, 30, 0.6);
+  background-size: 64px 32px, auto;
+  border: 1px dashed var(--stone-edge);
   border-radius: 12px;
   padding: 0.6rem;
+  box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
 .table-area {
@@ -545,6 +647,8 @@ body {
 }
 
 .step-banner {
+  position: relative;
+  z-index: 20;
   flex-shrink: 0;
   width: min(56rem, 96vw);
   display: flex;
@@ -582,11 +686,14 @@ body {
   gap: 0.4rem;
   font-size: clamp(0.95rem, 2.4vw, 1.1rem);
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(228, 236, 245, 0.22);
+  background: rgba(13, 20, 30, 0.72);
+  border: 1px solid var(--stone-edge);
   border-radius: 999px;
   padding: 0.35rem 0.95rem;
   cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(228, 236, 245, 0.08),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.4);
   transition: color 0.2s, border-color 0.2s;
 }
 
@@ -601,11 +708,19 @@ body {
 }
 
 .step-banner-body {
-  border: 1px solid rgba(228, 236, 245, 0.12);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
+  background:
+    var(--tex-block),
+    linear-gradient(180deg, rgba(20, 29, 43, 0.96), rgba(10, 16, 26, 0.98));
+  background-size: 64px 32px, auto;
+  border: 14px solid transparent;
+  border-image: var(--frame-ruin) 14 round;
+  border-radius: 0;
   padding: 0.7rem 1rem;
   overflow: hidden;
+  max-height: 42dvh;
+  box-shadow:
+    inset 0 0 24px rgba(0, 0, 0, 0.45),
+    0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
 .step-banner-desc {
@@ -665,7 +780,7 @@ body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(5, 8, 12, 0.78);
+  background: rgba(2, 4, 8, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -674,13 +789,19 @@ body {
 }
 
 .overlay-card {
-  background: linear-gradient(180deg, var(--felt), var(--felt-dark));
-  border: 1px solid var(--accent);
-  border-radius: 20px;
-  padding: 2.25rem 2.5rem;
+  background:
+    var(--tex-block),
+    linear-gradient(180deg, var(--felt), var(--felt-dark));
+  background-size: 64px 32px, auto;
+  border: 14px solid transparent;
+  border-image: var(--frame-ruin) 14 round;
+  border-radius: 0;
+  padding: 1.9rem 2.3rem;
   text-align: center;
-  max-width: 28rem;
-  box-shadow: 0 0 60px var(--accent-glow);
+  max-width: 30rem;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.5),
+    0 0 60px var(--accent-glow);
 }
 
 .overlay-emoji {
@@ -729,8 +850,8 @@ body {
   font-family: inherit;
   font-size: 1.05rem;
   color: var(--ivory);
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(228, 236, 245, 0.22);
+  background: rgba(2, 4, 8, 0.6);
+  border: 1px solid var(--stone-edge);
   border-radius: 10px;
   padding: 0.65rem 0.9rem;
   text-align: center;
@@ -765,8 +886,8 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(228, 236, 245, 0.14);
+  background: rgba(13, 20, 30, 0.7);
+  border: 1px solid var(--stone-edge);
   border-radius: 10px;
   padding: 0.6rem 0.9rem;
 }
@@ -1033,8 +1154,8 @@ body {
   }
 
   .leaderboard tr {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(228, 236, 245, 0.14);
+    background: rgba(13, 20, 30, 0.7);
+    border: 1px solid var(--stone-edge);
     border-radius: 10px;
     padding: 0.4rem 0.8rem;
     margin-bottom: 0.6rem;

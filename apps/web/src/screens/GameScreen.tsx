@@ -161,7 +161,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
 
       {game.error && <div className="error-banner">{game.error}</div>}
 
-      {banner && <StepBanner {...banner} />}
+      {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">

@@ -179,7 +179,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
       {online.error && <div className="error-banner">{online.error}</div>}
 
-      {banner && <StepBanner {...banner} />}
+      {banner && <StepBanner key={`${s.turnNumber}-${s.phase}`} {...banner} />}
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">
