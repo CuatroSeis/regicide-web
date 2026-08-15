@@ -131,6 +131,34 @@ Iteración visual + persistencia real de la tabla (commits `7ee999f`, `98132e6`,
 - **Fix StepBanner expandido**: antes el contenido quedaba detrás de las cartas (`.hand-area` `justify-content:flex-end` desbordaba hacia arriba sobre un panel casi transparente). Fix: `.step-banner {position:relative;z-index:20}`, `.step-banner-body` con fondo de piedra sólido + `--frame-ruin` + `max-height:42dvh`, `.hand-area {overflow:hidden}`, y **auto-colapso** con `key={`${s.turnNumber}-${s.phase}`}` en `GameScreen`/`OnlineGameScreen`.
 - **Skill** `.opencode/skills/dark-fantasy-theme/SKILL.md`: tokens, texturas, reglas do/don't y método de verificación (muestreo de píxeles).
 
+## V4.2 (hecho)
+
+Iteración "fortaleza gótica en ruinas" + glow corregido + mano responsive (sin commits de referencia; ver `git log` reciente para `style(web)`).
+
+### Luz desde arriba, SIN vela (decisión de usuario)
+- El glow central cálido (vela) detrás de la carta del enemigo chocaba con las letras hielo → **eliminado**. `.game-screen::before` ahora es solo **luz fría desde el cielo**: radial `ellipse 70% 46% at 50% 0% rgba(159,196,232,0.12)` + viñeta + grano. Refuerza la firma de las refs de castillo (`assets dark fantasy/castle/`): cielo claro → base oscura; todas las bases del panel quedan `R−B ≤ 0`.
+- Tokens `--ember`/`--ember-glow` quedan definidos en `:root` pero **sin uso** (candidatos a limpieza futura).
+
+### Skin gótico de fortaleza en ruinas (spec de usuario, 8 puntos — SOLO forma, sin tocar colores)
+1. **Arco ojival + borde de piedra rota**: `clip-path` (arco arriba, zigzag abajo) en `.enemy-panel`, `.table-cards` (puerta en ruinas) y `.hand-area::before`.
+2. **Doble contorno**: línea interior fina + marco `border-image` de sillares `--tex-ashlar-frame` (36×36, `12 round`) + pináculos/almenas.
+3. **Relieve y grietas**: `--tex-stone` (feTurbulence alpha 0.06) en paneles + `--tex-crack` (polilínea irregular) en esquinas (`.enemy-panel::after`, `.hand-area::after`).
+4. **Almenas en el header**: `.game-header::after` (tira `--tex-battlement`).
+5. **Carta del enemigo como ventana gótica**: `.enemy-card-wrap` con marco de arco apuntado (`::before`, clip-path) + mainullones (`::after`, líneas verticales en el arco).
+6. **Botones biselados en piedra**: `.menu-button` con `clip-path` chamfer (esquinas superiores cortadas) + relieve `--tex-stone`.
+7. **MESA = entrada de puerta en ruinas**: `.table-cards` con interior semitransparente, marco sillar, `outline` punteado y clip irregular.
+8. **Piso de la mano = escalón de piedra roto**: `.hand-area::before` con sombra proyectada de borde irregular (no elipse).
+
+### Mano responsive (P1): `useFitWidth` + `handMetrics`
+- `apps/web/src/hooks/useFitWidth.ts` (ResizeObserver) + `apps/web/src/lib/handMetrics.ts`: ancho/solape dinámicos según cartas y contenedor. Constantes: `HAND_MAX_CARD_WIDTH=104`, `HAND_MIN_CARD_WIDTH=52`, `HAND_OVERLAP_RATIO=0.33`, `HAND_SIDE_PAD=12`, **`HAND_ROTATION_PAD=10`** (el bbox de las cartas extremas giradas ±20° es más ancho que la carta: sin este margen la mano desbordaba ~5px en mobile).
+- Conectado en `GameScreen`/`OnlineGameScreen` (`handCardMetrics` → `CardFan width/overlap` + `CardDragGhost width`). Eliminados los `zoom` fijos sobre la mano del CSS.
+
+### Bug crítico resuelto: `zoom` + `overflow:hidden` recortaban el tablero
+- **Síntoma**: en ventanas bajas (≤760px alto) la mitad inferior del StepBanner no se pintaba y los controles quedaban invisibles, aunque los rects dijeran lo contrario (`elementFromPoint` → `BODY`).
+- **Causa raíz**: el `zoom` vivía en `.game-screen`, que además tiene `overflow:hidden` y `height:100dvh`. El zoom escala la **propia caja** (`0.8×100dvh=570px`), y `overflow:hidden` recortaba todo lo que quedara bajo ese borde.
+- **Fix**: nuevo wrapper `.game-inner` (flex column con gap/justify) dentro de `.game-screen`; el `zoom` responsive ahora escala `.game-inner` (contenido) mientras `.game-screen` conserva escala 1 y recorta a 100dvh real. Elementos `position:fixed` (VictoryOverlay, CardTravel, CardDragGhost, overlay Jester) quedan **fuera** de `.game-inner` (no se escalan).
+- Complemento: en `@media (max-height:760px) and (min-width:641px)` se compacta `.enemy-panel` (gap/padding) y `.enemy-card-wrap` para que banner abierto + controles entren en una pantalla.
+
 ## Cómo verificar cambios
 
 - Tras tocar web: `pnpm --filter @regicide/web build` y probar contra el server local en :3001 (el server sirve el build). Para el flujo online: 2 pestañas en `http://localhost:3001/`.
