@@ -1,55 +1,55 @@
 import type { ScreenProps } from '../navigation';
+import { useLanguage } from '../i18n/LanguageContext';
+
+const STEP_KEYS = ['rulesStep1', 'rulesStep2', 'rulesStep3', 'rulesStep4'] as const;
 
 export function RulesScreen({ onNavigate }: ScreenProps) {
+  const { t } = useLanguage();
   return (
     <div className="screen">
       <h1 className="title" style={{ fontSize: 'clamp(2rem, 6vw, 3rem)' }}>
-        Reglas
+        {t('rulesTitle')}
       </h1>
       <div className="rules-panel">
-        <h2>Turno (4 pasos)</h2>
+        <h2>{t('rulesTurn')}</h2>
         <ul>
-          <li><strong>Paso 1</strong> — juega una carta (o combo) o ríndete.</li>
-          <li><strong>Paso 2</strong> — se activa el poder del palo jugado.</li>
-          <li><strong>Paso 3</strong> — el valor juega como daño contra el enemigo.</li>
-          <li><strong>Paso 4</strong> — cubre el ataque del enemigo descartando cartas.</li>
+          {STEP_KEYS.map((key) => (
+            <li key={key} dangerouslySetInnerHTML={{ __html: t(key) }} />
+          ))}
         </ul>
 
-        <h2>Combos y Ases</h2>
+        <h2>{t('rulesCombos')}</h2>
         <ul>
-          <li>Puedes combinar cartas del mismo número con suma ≤ 10 (pares de 2-5, triples de 2-3, cuádruple de 2).</li>
-          <li>Los Ases (Animal Companions) valen 1 y se juegan solos o con otra carta.</li>
+          <li>{t('rulesCombo1')}</li>
+          <li>{t('rulesCombo2')}</li>
         </ul>
 
-        <h2>Poderes de palo</h2>
+        <h2>{t('rulesSuits')}</h2>
         <ul>
-          <li><strong>♥ Corazones</strong> — recupera del descarte bajo la Taverna.</li>
-          <li><strong>♦ Diamantes</strong> — roba cartas.</li>
-          <li><strong>♣ Tréboles</strong> — el daño cuenta doble.</li>
-          <li><strong>♠ Picas</strong> — escudo que reduce el ataque del enemigo.</li>
+          <li dangerouslySetInnerHTML={{ __html: t('rulesSuitHearts') }} />
+          <li dangerouslySetInnerHTML={{ __html: t('rulesSuitDiamonds') }} />
+          <li dangerouslySetInnerHTML={{ __html: t('rulesSuitClubs') }} />
+          <li dangerouslySetInnerHTML={{ __html: t('rulesSuitSpades') }} />
         </ul>
 
-        <h2>Enemigos</h2>
+        <h2>{t('rulesEnemies')}</h2>
         <ul>
-          <li>Jota 10/20 · Reina 15/30 · Rey 20/40 (ataque/vida).</li>
-          <li>El enemigo es inmune al poder de su palo; los Jesters anulan esa inmunidad.</li>
-          <li>Kill exacto: el enemigo va al tope de la Taverna boca abajo.</li>
+          <li>{t('rulesEnemy1')}</li>
+          <li>{t('rulesEnemy2')}</li>
+          <li>{t('rulesEnemy3')}</li>
         </ul>
 
-        <h2>En solitario</h2>
+        <h2>{t('rulesSolo')}</h2>
         <ul>
-          <li>Mano máxima de 8 cartas y 2 Jesters al costado.</li>
-          <li>El Jester descarta tu mano y recarga a 8 (2 veces por partida).</li>
-          <li>Victoria con 0/1/2 Jesters: Oro, Plata o Bronce.</li>
+          <li>{t('rulesSolo1')}</li>
+          <li>{t('rulesSolo2')}</li>
+          <li>{t('rulesSolo3')}</li>
         </ul>
       </div>
       <button type="button" className="back-button" onClick={() => onNavigate('home')}>
-        ← Volver
+        {t('back')}
       </button>
-      <p className="credits">
-        Reglas citadas del PDF oficial de Badgers From Mars, adaptadas a mazo estándar
-        (ver docs/rules-source.md).
-      </p>
+      <p className="credits">{t('rulesCredits')}</p>
     </div>
   );
 }

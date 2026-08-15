@@ -1,6 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { canYield, effectiveAttack } from '@regicide/engine';
-import type { ScreenProps } from '../navigation';
+import { useEffect, useMemo, useRef } from 'react';
+import { canYield, effectiveAttack, gameSummary } from '@regicide/engine';
 import { useGame } from '../hooks/useGame';
 import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
@@ -9,14 +8,45 @@ import { CardFan } from '../components/CardFan';
 import { DeckChip } from '../components/DeckCounters';
 import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
+import { useLanguage } from '../i18n/LanguageContext';
+import { submitScore } from '../lib/leaderboard';
+import type { SoloSetup } from './SetupScreen';
 
-export function GameScreen({ onNavigate }: ScreenProps) {
-  const game = useGame();
+interface GameScreenProps {
+  setup: SoloSetup;
+  /** Nueva semilla con el mismo nombre (vuelve a jugar). */
+  onRestart: () => void;
+  onHome: () => void;
+  onViewLeaderboard: () => void;
+}
+
+export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: GameScreenProps) {
+  const { t } = useLanguage();
+  const game = useGame(setup.seed);
   const s = game.snapshot;
   const player = s.players[s.currentPlayerIndex]!;
   const isSuffering = s.phase === 'suffer_damage';
   const canYieldNow = s.phase === 'choose_action' && canYield(s);
   const showJester = s.jestersLeft > 0 && (s.phase === 'choose_action' || s.phase === 'suffer_damage');
+  const summary = useMemo(() => (s.result ? gameSummary(s) : null), [s]);
+  const submitted = useRef(false);
+
+  useEffect(() => {
+    if (!s.result || submitted.current) return;
+    submitted.current = true;
+    if (!summary) return;
+    void submitScore({
+      name: setup.name,
+      seed: setup.seed,
+      result: summary.result ?? 'defeat',
+      enemiesDefeated: summary.enemiesDefeated,
+      enemyCard: summary.enemyCard,
+      jestersUsed: summary.jestersUsed,
+      turnNumber: summary.turnNumber,
+    }).catch(() => {
+      /* La tabla es best-effort: si falla, no interrumpimos la partida. */
+    });
+  }, [s.result, summary, setup]);
 
   const logTail = s.log.slice(-5);
 
@@ -51,8 +81,10 @@ export function GameScreen({ onNavigate }: ScreenProps) {
         <VictoryOverlay
           victory={s.result === 'victory'}
           victoryLevel={game.victoryLevel}
-          onNewGame={() => game.newGame()}
-          onHome={() => onNavigate('home')}
+          rank={summary?.rank}
+          onNewGame={onRestart}
+          onHome={onHome}
+          onViewLeaderboard={onViewLeaderboard}
         />
       )}
 
@@ -60,12 +92,14 @@ export function GameScreen({ onNavigate }: ScreenProps) {
 
       <header className="game-header">
         <div className="header-left">
-          <button type="button" className="back-button" onClick={() => onNavigate('home')}>
-            ← Menú
+          <button type="button" className="back-button" onClick={onHome}>
+            {t('menu')}
           </button>
-          <span className="meta">Semilla: {game.seed}</span>
+          <span className="meta">
+            {t('playingAs', { name: setup.name })} · {t('seedLabel', { seed: setup.seed })}
+          </span>
         </div>
-        <DeckChip label="Castillo" value={s.castleDeck.length} ref={castleRef} />
+        <DeckChip label={t('castle')} value={s.castleDeck.length} ref={castleRef} />
         <div className="header-right" />
       </header>
 
@@ -83,10 +117,10 @@ export function GameScreen({ onNavigate }: ScreenProps) {
       />
 
       <div className="table-area">
-        <span className="zone-label">Mesa</span>
+        <span className="zone-label">{t('table')}</span>
         <div className="table-cards" ref={tableRef}>
           {s.table.length === 0 ? (
-            <span className="muted">Juega cartas contra el enemigo</span>
+            <span className="muted">{t('playEmptyHint')}</span>
           ) : (
             s.table.map(({ card, playerId }) => (
               <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
@@ -97,16 +131,15 @@ export function GameScreen({ onNavigate }: ScreenProps) {
 
       {game.error && <div className="error-banner">{game.error}</div>}
 
-      <div className="phase-hint">
-        {s.phase === 'choose_action' &&
-          'Paso 1 — Elige cartas (combo, par, As…) y juega, ríndete o usa el Jester.'}
+      <div className="phase-hint" aria-live="polite">
+        {s.phase === 'choose_action' && t('phaseChoose')}
         {isSuffering &&
-          `Paso 4 — Descarta cartas para cubrir el ataque de ${effectiveAttack(s.enemy)} (${game.selectionValue} seleccionado).`}
+          t('phaseSuffer', { attack: effectiveAttack(s.enemy), value: game.selectionValue })}
       </div>
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">
-          Mano ({player.hand.length}/{player.maxHandSize})
+          {t('hand', { hand: player.hand.length, max: player.maxHandSize })}
         </span>
         <CardFan
           cards={player.hand}
@@ -125,7 +158,7 @@ export function GameScreen({ onNavigate }: ScreenProps) {
               disabled={!game.canPlay}
               onClick={game.play}
             >
-              Jugar
+              {t('play')}
             </button>
             <button
               type="button"
@@ -133,7 +166,7 @@ export function GameScreen({ onNavigate }: ScreenProps) {
               disabled={!canYieldNow}
               onClick={game.yieldTurn}
             >
-              Rendirse
+              {t('yield')}
             </button>
           </>
         )}
@@ -144,22 +177,22 @@ export function GameScreen({ onNavigate }: ScreenProps) {
             disabled={!game.canDiscard}
             onClick={game.discard}
           >
-            Cubrir daño
+            {t('coverDamage')}
           </button>
         )}
         {showJester && (
           <button type="button" className="menu-button" onClick={game.jester}>
-            Jester ({s.jestersLeft})
+            {t('jester')} ({s.jestersLeft})
           </button>
         )}
         {(s.phase === 'choose_action' || isSuffering) && game.selected.length > 0 && (
           <button type="button" className="back-button" onClick={game.clearSelection}>
-            Limpiar
+            {t('clear')}
           </button>
         )}
       </div>
 
-      <div className="log-box">
+      <div className="log-box" aria-live="polite">
         {logTail.map((entry, index) => (
           <div key={`${s.turnNumber}-${index}`} className="log-line">
             {entry}

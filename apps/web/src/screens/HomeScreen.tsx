@@ -1,6 +1,8 @@
 import type { Card } from '@regicide/engine';
 import type { Screen, ScreenProps } from '../navigation';
 import { CardFan } from '../components/CardFan';
+import { useLanguage } from '../i18n/LanguageContext';
+import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 
 const fanCards: Card[] = [
   { id: 'menu-king-spades', kind: 'enemy', rank: 'K', suit: 'spades' },
@@ -15,17 +17,20 @@ interface MenuOption {
   hint?: string;
 }
 
-const MENU_OPTIONS: MenuOption[] = [
-  { id: 'game', label: 'Iniciar partida (1p)' },
-  { id: 'room', label: 'Crear sala (2+ p)', hint: 'Multijugador online' },
-  { id: 'rules', label: 'Reglas' },
-];
-
 export function HomeScreen({ onNavigate }: ScreenProps) {
+  const { t } = useLanguage();
+  const MENU_OPTIONS: MenuOption[] = [
+    { id: 'setup', label: t('menuSolo') },
+    { id: 'room', label: t('menuOnline'), hint: t('menuOnlineHint') },
+    { id: 'rules', label: t('menuRules') },
+    { id: 'leaderboard', label: t('menuLeaderboard') },
+  ];
+
   return (
     <div className="screen">
+      <LanguageSwitcher />
       <h1 className="title">REGICIDIO</h1>
-      <p className="subtitle">Fan-made · Juego de cartas cooperativo</p>
+      <p className="subtitle">{t('homeSubtitle')}</p>
 
       <CardFan cards={fanCards} />
 
@@ -44,11 +49,7 @@ export function HomeScreen({ onNavigate }: ScreenProps) {
         ))}
       </ul>
 
-      <p className="credits">
-        Proyecto fan-made sin fines de lucro, sin afiliación con Badgers From Mars. Regicide es de
-        Paul Abrahams, Luke Badger y Andy Richdale. Cartas: htdebeer/SVG-cards (LGPL-2.1) por
-        David Bellot.
-      </p>
+      <p className="credits">{t('homeCredits')}</p>
     </div>
   );
 }

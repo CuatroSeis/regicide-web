@@ -19,6 +19,7 @@ interface CardFanProps {
 /**
  * Mano de cartas en abanico: las cartas se reparten en arco con rotación
  * progresiva y solape. Reusable para el menú y para la mano en partida.
+ * En modo selección cada carta es un <button> accesible (teclado + aria-pressed).
  */
 export function CardFan({
   cards,
@@ -44,9 +45,12 @@ export function CardFan({
       {cards.map((card, index) => {
         const rotation = index * step - offset;
         const isSelected = selectedIds.includes(card.id);
+        const interactive = Boolean(onSelect);
         return (
-          <motion.div
+          <motion.button
             key={card.id}
+            type="button"
+            className="card-fan-card"
             initial={{ y: -40, opacity: 0, rotate: rotation - 12 }}
             animate={{
               y: isSelected ? -20 : 0,
@@ -57,17 +61,23 @@ export function CardFan({
                 : '0 2px 8px rgba(0,0,0,0.35)',
             }}
             transition={{ type: 'spring', stiffness: 120, damping: 14 }}
-            whileHover={onSelect ? { scale: 1.07, zIndex: 20 } : { y: -18, scale: 1.06, zIndex: 10 }}
-            onClick={onSelect ? () => onSelect(card.id) : undefined}
+            whileHover={interactive ? { scale: 1.07, zIndex: 20 } : { y: -18, scale: 1.06, zIndex: 10 }}
+            onClick={interactive ? () => onSelect!(card.id) : undefined}
+            aria-pressed={interactive ? isSelected : undefined}
+            aria-disabled={!interactive ? true : undefined}
+            tabIndex={interactive ? 0 : -1}
             style={{
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
               marginLeft: index === 0 ? 0 : -overlap,
               zIndex: isSelected ? 15 : index,
-              cursor: onSelect ? 'pointer' : 'default',
+              cursor: interactive ? 'pointer' : 'default',
               borderRadius: 8,
             }}
           >
             <CardFace card={card} width={width} />
-          </motion.div>
+          </motion.button>
         );
       })}
     </div>

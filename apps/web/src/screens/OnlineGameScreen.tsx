@@ -9,6 +9,7 @@ import { CardFan } from '../components/CardFan';
 import { DeckChip } from '../components/DeckCounters';
 import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface OnlineGameScreenProps extends ScreenProps {
   online: OnlineSessionResult;
@@ -20,13 +21,14 @@ function localCanYield(consecutiveYields: number, playerCount: number): boolean 
 
 /** Tablero multijugador: el estado viene del server (PlayerGameState), no local. */
 export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) {
+  const { t } = useLanguage();
   const s = online.state;
   const [jesterPick, setJesterPick] = useState(false);
 
   if (!s) {
     return (
       <div className="screen game-screen">
-        <p className="muted">Esperando estado de la partida…</p>
+        <p className="muted">{t('waitingState')}</p>
         <button
           type="button"
           className="back-button"
@@ -35,7 +37,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
             onNavigate('home');
           }}
         >
-          ← Menú
+          {t('menu')}
         </button>
       </div>
     );
@@ -47,7 +49,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const victoryLevel = s.result === 'victory' ? (s.jestersUsed === 0 ? 'gold' : s.jestersUsed === 1 ? 'silver' : 'bronze') : null;
   const logTail = s.log.slice(-5);
   const roomNameById = new Map((online.room?.players ?? []).map((p) => [p.id, p.name]));
-  const currentName = roomNameById.get(s.players[s.currentPlayerIndex]!.id) ?? 'Jugador';
+  const currentName = roomNameById.get(s.players[s.currentPlayerIndex]!.id) ?? t('player');
   const gamePlayerIds = new Set(s.players.map((p) => p.id));
   const otherPlayers = (online.room?.players ?? []).filter((p) => p.id !== s.playerId && gamePlayerIds.has(p.id));
 
@@ -105,11 +107,11 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
               onNavigate('home');
             }}
           >
-            ← Menú
+            {t('menu')}
           </button>
-          <span className="meta">Sala {online.room?.code}</span>
+          <span className="meta">{t('roomCodeX', { code: online.room?.code ?? '' })}</span>
         </div>
-        <DeckChip label="Castillo" value={s.castleCount} ref={castleRef} />
+        <DeckChip label={t('castle')} value={s.castleCount} ref={castleRef} />
         <div className="header-right" />
       </header>
 
@@ -126,15 +128,15 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
         ref={enemyRef}
       />
 
-      <div className="turn-indicator">
-        {s.isMyTurn ? 'Es tu turno' : `Turno de ${currentName}`}
+      <div className="turn-indicator" aria-live="polite">
+        {s.isMyTurn ? t('yourTurn') : t('turnOf', { name: currentName })}
       </div>
 
       <div className="table-area">
-        <span className="zone-label">Mesa</span>
+        <span className="zone-label">{t('table')}</span>
         <div className="table-cards" ref={tableRef}>
           {s.table.length === 0 ? (
-            <span className="muted">Juega cartas contra el enemigo</span>
+            <span className="muted">{t('playEmptyHint')}</span>
           ) : (
             s.table.map(({ card, playerId }) => (
               <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
@@ -145,18 +147,19 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
       {online.error && <div className="error-banner">{online.error}</div>}
 
-      <div className="phase-hint">
+      <div className="phase-hint" aria-live="polite">
         {s.phase === 'choose_action' &&
-          (s.isMyTurn
-            ? 'Paso 1 — Elige cartas (combo, par, As…) y juega, ríndete o usa el Jester.'
-            : 'Espera tu turno…')}
+          (s.isMyTurn ? t('phaseChoose') : t('waitYourTurn'))}
         {isSuffering &&
-          `Paso 4 — Descarta cartas para cubrir el ataque de ${effectiveAttack(s.enemy)} (${online.selectionValue} seleccionado).`}
+          t('phaseSuffer', {
+            attack: effectiveAttack(s.enemy),
+            value: online.selectionValue,
+          })}
       </div>
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">
-          Mano ({s.hand.length}/{me?.maxHandSize ?? 0})
+          {t('hand', { hand: s.hand.length, max: me?.maxHandSize ?? 0 })}
         </span>
         <CardFan
           cards={[...s.hand]}
@@ -175,7 +178,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
               disabled={!online.canPlay}
               onClick={online.play}
             >
-              Jugar
+              {t('play')}
             </button>
             <button
               type="button"
@@ -183,11 +186,11 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
               disabled={!canYieldNow}
               onClick={online.yieldTurn}
             >
-              Rendirse
+              {t('yield')}
             </button>
             {online.canPlayJester && (
               <button type="button" className="menu-button" onClick={() => setJesterPick(true)}>
-                Jester
+                {t('jester')}
               </button>
             )}
           </>
@@ -199,21 +202,23 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
             disabled={!online.canDiscard}
             onClick={online.discard}
           >
-            Cubrir daño
+            {t('coverDamage')}
           </button>
         )}
         {(s.phase === 'choose_action' || isSuffering) && online.selected.length > 0 && (
           <button type="button" className="back-button" onClick={online.clearSelection}>
-            Limpiar
+            {t('clear')}
           </button>
         )}
       </div>
 
       {jesterPick && (
-        <div className="overlay">
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="jester-pick-title">
           <div className="overlay-card">
-            <h2 className="overlay-title">Jester</h2>
-            <p className="overlay-subtitle">Elegí quién empieza el próximo turno [R-20]</p>
+            <h2 className="overlay-title" id="jester-pick-title">
+              {t('jester')}
+            </h2>
+            <p className="overlay-subtitle">{t('jesterPickSubtitle')}</p>
             <div className="overlay-actions">
               {otherPlayers.map((player) => (
                 <button
@@ -227,15 +232,16 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
                 >
                   {player.name}
                 </button>
-              ))}              <button type="button" className="back-button" onClick={() => setJesterPick(false)}>
-                Cancelar
+              ))}
+              <button type="button" className="back-button" onClick={() => setJesterPick(false)}>
+                {t('cancel')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="log-box">
+      <div className="log-box" aria-live="polite">
         {logTail.map((entry, index) => (
           <div key={`${s.turnNumber}-${index}`} className="log-line">
             {entry}

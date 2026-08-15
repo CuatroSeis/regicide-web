@@ -3,15 +3,17 @@ import { effectiveAttack } from '@regicide/engine';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import type { Ref } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
+import type { TranslationKey } from '../i18n/translations';
 import { CardFace } from './CardFace';
 import { CardPile } from './CardPile';
 
-const RANK_NAME: Record<string, string> = { J: 'Jota', Q: 'Reina', K: 'Rey' };
-const SUIT_NAME: Record<Suit, string> = {
-  hearts: 'Corazones',
-  diamonds: 'Diamantes',
-  clubs: 'Tréboles',
-  spades: 'Picas',
+const RANK_KEY: Record<string, TranslationKey> = { J: 'rankJ', Q: 'rankQ', K: 'rankK' };
+const SUIT_NAME_KEY: Record<Suit, TranslationKey> = {
+  hearts: 'suitHearts',
+  diamonds: 'suitDiamonds',
+  clubs: 'suitClubs',
+  spades: 'suitSpades',
 };
 const SUIT_SYMBOL: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
 
@@ -70,6 +72,7 @@ export function EnemyPanel({
   discardRef,
   ref,
 }: EnemyPanelProps) {
+  const { t } = useLanguage();
   const remaining = enemy.maxHealth - enemy.damageTaken;
   const pct = Math.max(0, Math.min(100, (remaining / enemy.maxHealth) * 100));
   const attack = effectiveAttack(enemy);
@@ -79,7 +82,7 @@ export function EnemyPanel({
   return (
     <div className="enemy-panel" ref={ref}>
       <div className="enemy-health-row">
-        <span className="health-label">Vida</span>
+        <span className="health-label">{t('life')}</span>
         <div className="health-bar">
           <div className="health-fill" style={{ width: `${pct}%`, background: barColor }} />
         </div>
@@ -89,7 +92,7 @@ export function EnemyPanel({
       </div>
 
       <div className="enemy-card-row">
-        <CardPile mode="deck" count={tavernCount} label="Mazo" ref={deckRef} />
+        <CardPile mode="deck" count={tavernCount} label={t('deck')} ref={deckRef} />
 
         <div className="enemy-card-wrap">
           <div className="enemy-card">
@@ -99,28 +102,28 @@ export function EnemyPanel({
           <DamageFloat lastDamageDealt={lastDamageDealt} turnNumber={turnNumber} />
         </div>
 
-        <CardPile mode="discard" count={discardCount} topCard={discardTopCard} label="Cementerio" ref={discardRef} />
+        <CardPile mode="discard" count={discardCount} topCard={discardTopCard} label={t('discard')} ref={discardRef} />
       </div>
 
       <div className="enemy-name">
-        {RANK_NAME[enemy.card.rank!]} de {SUIT_NAME[suit]}
+        {t(RANK_KEY[enemy.card.rank!]!)} de {t(SUIT_NAME_KEY[suit])}
       </div>
 
       <div className="stats-row">
         <span className="stat stat-attack">
-          Ataque <strong>{attack}</strong>
+          {t('attack')} <strong>{attack}</strong>
         </span>
         {enemy.spadeShield > 0 && (
           <span className="stat stat-shield">
-            Escudo <strong>♠ {enemy.spadeShield}</strong>
+            {t('shield')} <strong>♠ {enemy.spadeShield}</strong>
           </span>
         )}
-        <span className="stat">Turno: {turnNumber}</span>
-        <span className="stat">Jesters: {jestersLeft}</span>
+        <span className="stat">{t('turnX', { n: turnNumber })}</span>
+        <span className="stat">{t('jestersX', { n: jestersLeft })}</span>
       </div>
 
       <div className="immunity">
-        Inmune a {SUIT_SYMBOL[suit]} ({SUIT_NAME[suit]})
+        {t('immuneTo', { symbol: SUIT_SYMBOL[suit], name: t(SUIT_NAME_KEY[suit]) })}
       </div>
     </div>
   );

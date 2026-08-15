@@ -1,4 +1,4 @@
-export type Screen = 'home' | 'rules' | 'game' | 'room' | 'online-game';
+export type Screen = 'home' | 'rules' | 'setup' | 'game' | 'room' | 'online-game' | 'leaderboard';
 
 export interface ScreenProps {
   onNavigate: (screen: Screen) => void;

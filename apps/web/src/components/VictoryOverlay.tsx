@@ -1,47 +1,76 @@
+import type { SoloRank } from '@regicide/engine';
+import { useLanguage } from '../i18n/LanguageContext';
+import type { TranslationKey } from '../i18n/translations';
+
 interface VictoryOverlayProps {
   victory: boolean;
   victoryLevel: 'gold' | 'silver' | 'bronze' | null;
+  /** Rango final de la partida (solo); null en multijugador. */
+  rank?: SoloRank | null;
   onNewGame: () => void;
   onHome: () => void;
+  onViewLeaderboard?: () => void;
 }
 
-const MEDAL: Record<'gold' | 'silver' | 'bronze', { emoji: string; label: string }> = {
-  gold: { emoji: '🥇', label: 'Victoria de Oro' },
-  silver: { emoji: '🥈', label: 'Victoria de Plata' },
-  bronze: { emoji: '🥉', label: 'Victoria de Bronce' },
+const MEDAL: Record<'gold' | 'silver' | 'bronze', { emoji: string; label: TranslationKey }> = {
+  gold: { emoji: '🥇', label: 'victoryGold' },
+  silver: { emoji: '🥈', label: 'victorySilver' },
+  bronze: { emoji: '🥉', label: 'victoryBronze' },
 };
 
-export function VictoryOverlay({ victory, victoryLevel, onNewGame, onHome }: VictoryOverlayProps) {
+const RANK_LABEL: Record<SoloRank, TranslationKey> = {
+  gold: 'rankGold',
+  silver: 'rankSilver',
+  bronze: 'rankBronze',
+  baron: 'rankBaron',
+  knight: 'rankKnight',
+  squire: 'rankSquire',
+  peasant: 'rankPeasant',
+};
+
+export function VictoryOverlay({
+  victory,
+  victoryLevel,
+  rank,
+  onNewGame,
+  onHome,
+  onViewLeaderboard,
+}: VictoryOverlayProps) {
+  const { t } = useLanguage();
   return (
-    <div className="overlay">
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
       <div className="overlay-card">
         {victory ? (
           <>
             <div className="overlay-emoji">
               {victoryLevel ? MEDAL[victoryLevel].emoji : '👑'}
             </div>
-            <h2 className="overlay-title">
-              {victoryLevel ? MEDAL[victoryLevel].label : '¡Victoria!'}
+            <h2 className="overlay-title" id="overlay-title">
+              {victoryLevel ? t(MEDAL[victoryLevel].label) : t('victory')}
             </h2>
-            <p className="overlay-subtitle">
-              Derrotaste al último Rey del castillo. [R-23][R-25]
-            </p>
+            <p className="overlay-subtitle">{t('victorySubtitle')}</p>
           </>
         ) : (
           <>
             <div className="overlay-emoji">💀</div>
-            <h2 className="overlay-title">Derrota</h2>
-            <p className="overlay-subtitle">
-              Te quedaste sin cartas y sin Jester para continuar. El castillo gana. [R-25]
-            </p>
+            <h2 className="overlay-title" id="overlay-title">
+              {t('defeat')}
+            </h2>
+            <p className="overlay-subtitle">{t('defeatSubtitle')}</p>
           </>
         )}
+        {rank && <p className="overlay-rank">{t('finalRank', { rank: t(RANK_LABEL[rank]) })}</p>}
         <div className="overlay-actions">
           <button type="button" className="menu-button" onClick={onNewGame}>
-            Jugar de nuevo
+            {t('playAgain')}
           </button>
+          {onViewLeaderboard && (
+            <button type="button" className="menu-button" onClick={onViewLeaderboard}>
+              {t('viewLeaderboard')}
+            </button>
+          )}
           <button type="button" className="back-button" onClick={onHome}>
-            Volver al menú
+            {t('backToMenu')}
           </button>
         </div>
       </div>

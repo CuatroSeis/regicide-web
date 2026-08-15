@@ -1,4 +1,7 @@
-import { Component, type ReactNode } from 'react';
+import { Component } from 'react';
+import type { ReactNode } from 'react';
+import { LanguageContext } from '../i18n/LanguageContext';
+import type { LanguageContextValue } from '../i18n/LanguageContext';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -9,6 +12,9 @@ interface ErrorBoundaryState {
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  static override contextType = LanguageContext;
+  declare context: LanguageContextValue;
+
   override state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -17,11 +23,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   override render() {
     if (this.state.error) {
+      const { t } = this.context;
       return (
         <div className="screen game-screen">
-          <p className="muted">Ocurrió un error inesperado en la interfaz.</p>
+          <p className="muted">{t('errorUi')}</p>
           <button type="button" className="menu-button" onClick={() => window.location.reload()}>
-            Recargar
+            {t('reload')}
           </button>
         </div>
       );
