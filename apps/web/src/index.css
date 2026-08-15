@@ -350,6 +350,29 @@ body {
   justify-content: center;
 }
 
+.enemy-card-wrap--shake {
+  animation: enemy-shake 0.45s ease-in-out;
+}
+
+@keyframes enemy-shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+  20% {
+    transform: translateX(-10px) rotate(-1.5deg);
+  }
+  40% {
+    transform: translateX(10px) rotate(1.5deg);
+  }
+  60% {
+    transform: translateX(-6px) rotate(-1deg);
+  }
+  80% {
+    transform: translateX(6px) rotate(1deg);
+  }
+}
+
 .enemy-card {
   position: relative;
   flex-shrink: 0;
@@ -441,6 +464,16 @@ body {
   z-index: 50;
 }
 
+.damage-float--heavy {
+  width: 8rem;
+  margin-left: -4rem;
+  font-size: clamp(2.6rem, 6.5vw, 3.8rem);
+  color: #ff6b6b;
+  text-shadow:
+    0 0 26px rgba(255, 107, 107, 0.65),
+    0 2px 0 rgba(0, 0, 0, 0.6);
+}
+
 .card-travel {
   position: fixed;
   z-index: 90;
@@ -489,16 +522,115 @@ body {
   flex-shrink: 0;
 }
 
+.table-cards.drag-over,
+.enemy-card-wrap.drag-over {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-glow),
+    inset 0 0 24px var(--accent-glow);
+}
+
+.table-cards.drag-over {
+  background: rgba(159, 196, 232, 0.08);
+}
+
+.drag-ghost {
+  opacity: 0.92;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
 .muted {
   color: var(--muted);
   font-size: 1rem;
 }
 
-.phase-hint {
+.step-banner {
+  flex-shrink: 0;
   width: min(56rem, 96vw);
-  font-size: clamp(1.1rem, 3vw, 1.35rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.step-banner-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.step-banner-title {
+  font-size: clamp(1.7rem, 4.6vw, 2.4rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  color: var(--accent);
+  text-shadow:
+    0 0 18px var(--accent-glow),
+    0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.step-banner-title--wait {
   color: var(--muted);
-  min-height: 1.4em;
+  text-shadow: none;
+}
+
+.step-banner-toggle {
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: clamp(0.95rem, 2.4vw, 1.1rem);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(228, 236, 245, 0.22);
+  border-radius: 999px;
+  padding: 0.35rem 0.95rem;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.step-banner-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.step-banner-chevron {
+  font-size: 0.75em;
+  line-height: 1;
+}
+
+.step-banner-body {
+  border: 1px solid rgba(228, 236, 245, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  overflow: hidden;
+}
+
+.step-banner-desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.6vw, 1.15rem);
+  line-height: 1.55;
+}
+
+.step-banner-log {
+  margin-top: 0.6rem;
+  color: var(--muted);
+  font-size: clamp(0.95rem, 2.4vw, 1.05rem);
+  line-height: 1.5;
+  text-align: left;
+}
+
+.step-banner-log-title {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+  opacity: 0.8;
 }
 
 .error-banner {
@@ -522,20 +654,6 @@ body {
 .controls .menu-button {
   font-size: 1.3rem;
   padding: 0.7rem 1.6rem;
-}
-
-.log-box {
-  width: min(56rem, 96vw);
-  text-align: left;
-  color: var(--muted);
-  font-size: clamp(1rem, 2.6vw, 1.15rem);
-  line-height: 1.55;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(228, 236, 245, 0.1);
-  border-radius: 12px;
-  padding: 0.5rem 1rem;
-  max-height: 5rem;
-  overflow-y: auto;
 }
 
 .log-line {
@@ -666,19 +784,6 @@ body {
   color: #ff8f8f;
 }
 
-.turn-indicator {
-  align-self: center;
-  flex-shrink: 0;
-  font-size: clamp(1.3rem, 3.4vw, 1.6rem);
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  padding: 0.35rem 1.5rem;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(159, 196, 232, 0.18), rgba(159, 196, 232, 0.06));
-  border: 1px solid rgba(159, 196, 232, 0.5);
-  min-height: 1.5em;
-}
-
 /* ---- Responsive ---- */
 
 /* Alturas de pantalla bajas en desktop: escala proporcional (todo visible). */
@@ -788,9 +893,13 @@ body {
     padding: 0.4rem;
   }
 
-  .phase-hint {
-    font-size: 0.95rem;
-    min-height: 1.2em;
+  .step-banner-title {
+    font-size: 1.4rem;
+  }
+
+  .step-banner-toggle {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.8rem;
   }
 
   .hand-area > div {
@@ -809,19 +918,6 @@ body {
   .controls .back-button {
     font-size: 0.85rem;
     padding: 0.45rem 0.9rem;
-  }
-
-  .log-box {
-    font-size: 0.85rem;
-    line-height: 1.4;
-    max-height: 3.2rem;
-    padding: 0.35rem 0.8rem;
-  }
-
-  .turn-indicator {
-    font-size: 0.95rem;
-    padding: 0.25rem 1rem;
-    min-height: auto;
   }
 
   .enemy-health-row {
@@ -859,16 +955,13 @@ body {
   .table-cards {
     min-height: 42px;
   }
-
-  .log-box {
-    display: none;
-  }
 }
 
 /* ---- Accesibilidad ---- */
 
 .card-fan-card {
   line-height: 0;
+  touch-action: none;
 }
 
 .card-fan-card:focus-visible {

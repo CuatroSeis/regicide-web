@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { canYield, effectiveAttack, gameSummary } from '@regicide/engine';
 import { useGame } from '../hooks/useGame';
+import { useCardDrag } from '../hooks/useCardDrag';
+import { CardDragGhost } from '../components/CardDragGhost';
 import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { CardFace } from '../components/CardFace';
 import { CardFan } from '../components/CardFan';
+import { StepBanner } from '../components/StepBanner';
 import { DeckChip } from '../components/DeckCounters';
 import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
@@ -50,6 +53,20 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
 
   const logTail = s.log.slice(-5);
 
+  const banner =
+    s.phase === 'choose_action'
+      ? { title: t('stepLabel', { n: 1 }), description: t('phaseChoose'), log: logTail }
+      : isSuffering
+        ? {
+            title: t('stepLabel', { n: 4 }),
+            description: t('phaseSuffer', {
+              attack: effectiveAttack(s.enemy),
+              value: game.selectionValue,
+            }),
+            log: logTail,
+          }
+        : null;
+
   const deckRef = useRef<HTMLDivElement>(null);
   const castleRef = useRef<HTMLSpanElement>(null);
   const discardRef = useRef<HTMLDivElement>(null);
@@ -74,6 +91,16 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
     table: tableRef,
     enemy: enemyRef,
   };
+
+  const { drag, onCardPointerDown } = useCardDrag({
+    enabled: s.phase === 'choose_action',
+    selectedIds: game.selected,
+    canPlay: game.canPlay,
+    toggle: game.toggle,
+    play: game.play,
+    tableRef,
+    enemyRef,
+  });
 
   return (
     <div className="screen game-screen">
@@ -118,7 +145,10 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
 
       <div className="table-area">
         <span className="zone-label">{t('table')}</span>
-        <div className="table-cards" ref={tableRef}>
+        <div
+          className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
+          ref={tableRef}
+        >
           {s.table.length === 0 ? (
             <span className="muted">{t('playEmptyHint')}</span>
           ) : (
@@ -131,11 +161,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
 
       {game.error && <div className="error-banner">{game.error}</div>}
 
-      <div className="phase-hint" aria-live="polite">
-        {s.phase === 'choose_action' && t('phaseChoose')}
-        {isSuffering &&
-          t('phaseSuffer', { attack: effectiveAttack(s.enemy), value: game.selectionValue })}
-      </div>
+      {banner && <StepBanner {...banner} />}
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">
@@ -146,8 +172,19 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
           width={104}
           selectedIds={game.selected}
           onSelect={game.toggle}
+          onCardPointerDown={onCardPointerDown}
+          suppressClick={drag !== null}
         />
       </div>
+
+      {drag && (
+        <CardDragGhost
+          cards={player.hand.filter((card) => drag.ids.includes(card.id))}
+          width={104}
+          x={drag.x}
+          y={drag.y}
+        />
+      )}
 
       <div className="controls">
         {s.phase === 'choose_action' && (
@@ -190,14 +227,6 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
             {t('clear')}
           </button>
         )}
-      </div>
-
-      <div className="log-box" aria-live="polite">
-        {logTail.map((entry, index) => (
-          <div key={`${s.turnNumber}-${index}`} className="log-line">
-            {entry}
-          </div>
-        ))}
       </div>
     </div>
   );

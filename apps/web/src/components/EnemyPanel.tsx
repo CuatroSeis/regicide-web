@@ -17,6 +17,9 @@ const SUIT_NAME_KEY: Record<Suit, TranslationKey> = {
 };
 const SUIT_SYMBOL: Record<Suit, string> = { hearts: '♥', diamonds: '♦', clubs: '♣', spades: '♠' };
 
+/** A partir de este daño, el golpe se muestra "pesado" (más grande + sacudida). */
+export const HEAVY_HIT_THRESHOLD = 10;
+
 interface EnemyPanelProps {
   enemy: Enemy;
   turnNumber: number;
@@ -36,26 +39,25 @@ interface EnemyPanelProps {
 }
 
 /** Número "−N" flotante sobre la carta cuando el enemigo recibe daño. */
-function DamageFloat({ lastDamageDealt, turnNumber }: { lastDamageDealt: number; turnNumber: number }) {
-  const [show, setShow] = useState<{ key: number; value: number } | null>(null);
-
-  useEffect(() => {
-    if (lastDamageDealt > 0) {
-      setShow((prev) => ({ key: (prev?.key ?? 0) + 1, value: lastDamageDealt }));
-    }
-  }, [lastDamageDealt, turnNumber]);
-
-  if (!show) return null;
+function DamageFloat({
+  hit,
+  onDone,
+}: {
+  hit: { key: number; value: number } | null;
+  onDone: () => void;
+}) {
+  if (!hit) return null;
+  const heavy = hit.value >= HEAVY_HIT_THRESHOLD;
   return (
     <motion.div
-      key={show.key}
-      className="damage-float"
+      key={hit.key}
+      className={heavy ? 'damage-float damage-float--heavy' : 'damage-float'}
       initial={{ opacity: 1, y: 0, scale: 1.3 }}
       animate={{ opacity: 0, y: -64, scale: 1 }}
-      transition={{ duration: 0.9, ease: 'easeOut' }}
-      onAnimationComplete={() => setShow(null)}
+      transition={{ duration: heavy ? 1.1 : 0.9, ease: 'easeOut' }}
+      onAnimationComplete={onDone}
     >
-      −{show.value}
+      −{hit.value}
     </motion.div>
   );
 }
@@ -73,11 +75,20 @@ export function EnemyPanel({
   ref,
 }: EnemyPanelProps) {
   const { t } = useLanguage();
+  const [hit, setHit] = useState<{ key: number; value: number } | null>(null);
+  const [shaking, setShaking] = useState(false);
   const remaining = enemy.maxHealth - enemy.damageTaken;
   const pct = Math.max(0, Math.min(100, (remaining / enemy.maxHealth) * 100));
   const attack = effectiveAttack(enemy);
   const suit = enemy.card.suit!;
   const barColor = pct > 60 ? '#79d6b2' : pct > 30 ? 'var(--accent)' : '#e5737f';
+
+  useEffect(() => {
+    if (lastDamageDealt > 0) {
+      setHit((prev) => ({ key: (prev?.key ?? 0) + 1, value: lastDamageDealt }));
+      if (lastDamageDealt >= HEAVY_HIT_THRESHOLD) setShaking(true);
+    }
+  }, [lastDamageDealt, turnNumber]);
 
   return (
     <div className="enemy-panel" ref={ref}>
@@ -94,12 +105,15 @@ export function EnemyPanel({
       <div className="enemy-card-row">
         <CardPile mode="deck" count={tavernCount} label={t('deck')} ref={deckRef} />
 
-        <div className="enemy-card-wrap">
+        <div
+          className={shaking ? 'enemy-card-wrap enemy-card-wrap--shake' : 'enemy-card-wrap'}
+          onAnimationEnd={() => setShaking(false)}
+        >
           <div className="enemy-card">
             <CardFace card={enemy.card} width={130} />
             {enemy.spadeShield > 0 && <span className="badge shield-badge">♠ {enemy.spadeShield}</span>}
           </div>
-          <DamageFloat lastDamageDealt={lastDamageDealt} turnNumber={turnNumber} />
+          <DamageFloat hit={hit} onDone={() => setHit(null)} />
         </div>
 
         <CardPile mode="discard" count={discardCount} topCard={discardTopCard} label={t('discard')} ref={discardRef} />

@@ -6,9 +6,12 @@ import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { CardFace } from '../components/CardFace';
 import { CardFan } from '../components/CardFan';
+import { StepBanner } from '../components/StepBanner';
 import { DeckChip } from '../components/DeckCounters';
 import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
+import { CardDragGhost } from '../components/CardDragGhost';
+import { useCardDrag } from '../hooks/useCardDrag';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface OnlineGameScreenProps extends ScreenProps {
@@ -53,6 +56,26 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const gamePlayerIds = new Set(s.players.map((p) => p.id));
   const otherPlayers = (online.room?.players ?? []).filter((p) => p.id !== s.playerId && gamePlayerIds.has(p.id));
 
+  const isMyTurnAndChoosing = s.isMyTurn && s.phase === 'choose_action';
+  const banner = s.phase === 'choose_action' || isSuffering
+    ? {
+        waiting: !s.isMyTurn,
+        title: isMyTurnAndChoosing || (isSuffering && s.isMyTurn)
+          ? t('stepLabel', { n: isSuffering ? 4 : 1 })
+          : t('turnOf', { name: currentName }),
+        description:
+          isMyTurnAndChoosing
+            ? t('phaseChoose')
+            : isSuffering && s.isMyTurn
+              ? t('phaseSuffer', {
+                  attack: effectiveAttack(s.enemy),
+                  value: online.selectionValue,
+                })
+              : undefined,
+        log: logTail,
+      }
+    : null;
+
   const deckRef = useRef<HTMLDivElement>(null);
   const castleRef = useRef<HTMLSpanElement>(null);
   const discardRef = useRef<HTMLDivElement>(null);
@@ -77,6 +100,16 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
     table: tableRef,
     enemy: enemyRef,
   };
+
+  const { drag, onCardPointerDown } = useCardDrag({
+    enabled: s.isMyTurn && s.phase === 'choose_action',
+    selectedIds: online.selected,
+    canPlay: online.canPlay,
+    toggle: online.toggle,
+    play: online.play,
+    tableRef,
+    enemyRef,
+  });
 
   return (
     <div className="screen game-screen">
@@ -128,13 +161,12 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
         ref={enemyRef}
       />
 
-      <div className="turn-indicator" aria-live="polite">
-        {s.isMyTurn ? t('yourTurn') : t('turnOf', { name: currentName })}
-      </div>
-
       <div className="table-area">
         <span className="zone-label">{t('table')}</span>
-        <div className="table-cards" ref={tableRef}>
+        <div
+          className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
+          ref={tableRef}
+        >
           {s.table.length === 0 ? (
             <span className="muted">{t('playEmptyHint')}</span>
           ) : (
@@ -147,15 +179,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
       {online.error && <div className="error-banner">{online.error}</div>}
 
-      <div className="phase-hint" aria-live="polite">
-        {s.phase === 'choose_action' &&
-          (s.isMyTurn ? t('phaseChoose') : t('waitYourTurn'))}
-        {isSuffering &&
-          t('phaseSuffer', {
-            attack: effectiveAttack(s.enemy),
-            value: online.selectionValue,
-          })}
-      </div>
+      {banner && <StepBanner {...banner} />}
 
       <div className="hand-area" ref={handRef}>
         <span className="zone-label">
@@ -166,8 +190,19 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
           width={104}
           selectedIds={online.selected}
           onSelect={s.isMyTurn ? online.toggle : undefined}
+          onCardPointerDown={onCardPointerDown}
+          suppressClick={drag !== null}
         />
       </div>
+
+      {drag && (
+        <CardDragGhost
+          cards={s.hand.filter((card) => drag.ids.includes(card.id))}
+          width={104}
+          x={drag.x}
+          y={drag.y}
+        />
+      )}
 
       <div className="controls">
         {s.phase === 'choose_action' && s.isMyTurn && (
@@ -240,14 +275,6 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
           </div>
         </div>
       )}
-
-      <div className="log-box" aria-live="polite">
-        {logTail.map((entry, index) => (
-          <div key={`${s.turnNumber}-${index}`} className="log-line">
-            {entry}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

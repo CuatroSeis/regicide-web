@@ -14,6 +14,10 @@ interface CardFanProps {
   selectedIds?: string[];
   /** Callback al hacer clic en una carta (modo selección). */
   onSelect?: (cardId: string) => void;
+  /** Callback al iniciar un gesto de arrastre sobre una carta (drag & drop). */
+  onCardPointerDown?: (cardId: string, e: React.PointerEvent) => void;
+  /** Suprime el clic (toggle) mientras hay un arrastre activo. */
+  suppressClick?: boolean;
 }
 
 /**
@@ -28,6 +32,8 @@ export function CardFan({
   overlap = 34,
   selectedIds = [],
   onSelect,
+  onCardPointerDown,
+  suppressClick = false,
 }: CardFanProps) {
   if (cards.length === 0) return null;
   const step = cards.length > 1 ? totalAngle / (cards.length - 1) : 0;
@@ -62,7 +68,8 @@ export function CardFan({
             }}
             transition={{ type: 'spring', stiffness: 120, damping: 14 }}
             whileHover={interactive ? { scale: 1.07, zIndex: 20 } : { y: -18, scale: 1.06, zIndex: 10 }}
-            onClick={interactive ? () => onSelect!(card.id) : undefined}
+            onClick={interactive && !suppressClick ? () => onSelect!(card.id) : undefined}
+            onPointerDown={onCardPointerDown ? (e) => onCardPointerDown(card.id, e) : undefined}
             aria-pressed={interactive ? isSelected : undefined}
             aria-disabled={!interactive ? true : undefined}
             tabIndex={interactive ? 0 : -1}

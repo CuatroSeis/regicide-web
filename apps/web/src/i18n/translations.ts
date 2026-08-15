@@ -72,8 +72,12 @@ const es = {
 
   // ---- Partida solo ----
   'playingAs': 'Jugando: {name}',
-  'phaseChoose': 'Paso 1 — Elige cartas (combo, par, As…) y juega, ríndete o usa el Jester.',
-  'phaseSuffer': 'Paso 4 — Descarta cartas para cubrir el ataque de {attack} ({value} seleccionado).',
+  'phaseChoose': 'Elige cartas (combo, par, As…) y juega, ríndete o usa el Jester.',
+  'phaseSuffer': 'Descarta cartas para cubrir el ataque de {attack} ({value} seleccionado).',
+  'stepLabel': 'Paso {n}',
+  'detailsMore': 'Detalles',
+  'detailsLess': 'Ocultar',
+  'logTitle': 'Registro',
 
   // ---- Online / sala ----
   'onlineTitle': 'Jugar online',
@@ -217,8 +221,12 @@ const en: Record<TranslationKey, string> = {
     'Rules cited from the official Badgers From Mars PDF, adapted to a standard deck (see docs/rules-source.md).',
 
   playingAs: 'Playing as: {name}',
-  phaseChoose: 'Step 1 — Choose cards (combo, pair, Ace…) and play, yield or use the Jester.',
-  phaseSuffer: 'Step 4 — Discard cards to cover the attack of {attack} ({value} selected).',
+  phaseChoose: 'Choose cards (combo, pair, Ace…) and play, yield or use the Jester.',
+  phaseSuffer: 'Discard cards to cover the attack of {attack} ({value} selected).',
+  stepLabel: 'Step {n}',
+  detailsMore: 'Details',
+  detailsLess: 'Hide',
+  logTitle: 'Log',
 
   onlineTitle: 'Play online',
   onlineSubtitle: 'Create a room or join by code',
@@ -354,8 +362,12 @@ const pt: Record<TranslationKey, string> = {
     'Regras citadas do PDF oficial de Badgers From Mars, adaptadas a um baralho padrão (ver docs/rules-source.md).',
 
   playingAs: 'Jogando como: {name}',
-  phaseChoose: 'Passo 1 — Escolha cartas (combo, par, Ás…) e jogue, renda-se ou use o Coringa.',
-  phaseSuffer: 'Passo 4 — Descarte cartas para cobrir o ataque de {attack} ({value} selecionado).',
+  phaseChoose: 'Escolha cartas (combo, par, Ás…) e jogue, renda-se ou use o Coringa.',
+  phaseSuffer: 'Descarte cartas para cobrir o ataque de {attack} ({value} selecionado).',
+  stepLabel: 'Passo {n}',
+  detailsMore: 'Detalhes',
+  detailsLess: 'Ocultar',
+  logTitle: 'Registro',
 
   onlineTitle: 'Jogar online',
   onlineSubtitle: 'Crie uma sala ou entre com código',
