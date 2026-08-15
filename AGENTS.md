@@ -18,7 +18,7 @@
 ```bash
 pnpm typecheck                 # tsc en todos los paquetes
 pnpm lint                      # eslint
-pnpm --filter @regicide/server test    # vitest (29 tests)
+pnpm --filter @regicide/server test    # vitest (29 tests; +2 integración si hay DATABASE_URL)
 pnpm --filter @regicide/engine test    # vitest (124 tests, coverage)
 pnpm --filter @regicide/web test       # vitest + Testing Library (23 tests)
 pnpm --filter @regicide/web build      # genera apps/web/dist
@@ -32,7 +32,7 @@ pnpm --filter @regicide/web dev        # Vite dev en :5173
 - **URL**: https://regicide-web.onrender.com/
 - El server sirve `apps/web/dist` (build estático) + socket.io en el mismo origen (sin CORS).
 - **Cuidado**: `io.httpServer.listen(port)` y NUNCA `io.listen(number)` (crea un server 404).
-- **Render free tier**: duerme con inactividad (cold start ~30-60 s, acks lentos al arrancar). No confundir con bugs. Salas en memoria (se pierden al reiniciar).
+- **Render free tier**: duerme con inactividad (cold start ~30-60 s, acks lentos al arrancar). No confundir con bugs. **Salas en memoria** (se pierden al reiniciar). La **tabla de posiciones persiste en Supabase** (`DATABASE_URL`, Postgres externo con `sync: false` en `render.yaml`), así que no se pierde en cold start/redeploy.
 
 ## Estado actual (V1 + V2, en producción)
 
@@ -46,7 +46,7 @@ pnpm --filter @regicide/web dev        # Vite dev en :5173
 ## Arquitectura clave
 
 - `apps/server/src/rooms.ts` — `RoomManager`: salas en memoria, `playerOrder`, `applyAction` valida "es tu turno".
-- `apps/server/src/leaderboard.ts` — tabla de posiciones: `LeaderboardStore`, `parseScoreInput`. Rutas API en `index.ts`.
+- `apps/server/src/leaderboard.ts` — tabla de posiciones: interfaz `LeaderboardStore` (`load`/`add`/`list`) + `FileLeaderboardStore` (JSON best-effort) + `PostgresLeaderboardStore` + factory `createLeaderboardStore()` (usa Postgres si existe `DATABASE_URL`). `parseScoreInput` valida/saneja el payload. Rutas API en `index.ts`.
 - `apps/server/src/index.ts` — handlers socket: `room:create/join/rejoin/leave`, `game:start/play/yield/discard/play-jester`. `syncRoom` → `playerSnapshot` por jugador → emit `game:state-sync`. `withPlayerNames` reemplaza ids por nombres en el log. `socketByPlayerId` para enrutar estados. API HTTP: `GET /api/leaderboard`, `POST /api/scores`.
 - `packages/engine/src/net.ts` — `PublicGameState` / `PlayerGameState`. **Datos ya disponibles en cada snapshot**: `players`, `currentPlayerIndex`, `castleCount`, `tavernCount`, `discardPile`, `table`, `enemy`, `phase`, `consecutiveYields`, `jestersLeft`, `turnNumber`, `log`, `hand`, `isMyTurn`.
 - `packages/engine/src/turn.ts` — reglas de turno (pasos 1-4, Jester R-20/21, rendirse R-9). Documentadas contra `docs/rules-source.md` (R-N).
@@ -56,8 +56,8 @@ pnpm --filter @regicide/web dev        # Vite dev en :5173
 - `apps/web/src/screens/SetupScreen.tsx` — nombre + semilla de la partida 1p (asocia el resultado a la tabla). `LeaderboardScreen.tsx` — tabla con Nombre | Dónde murió | Jesters | Rango.
 - `apps/web/src/lib/leaderboard.ts` — cliente `fetchLeaderboard`/`submitScore` contra `/api`.
 - `apps/web/src/App.tsx` — navegación por `screen` (`home/setup/room/rules/leaderboard/game/online-game`). `MotionConfig reducedMotion="user"` en `AppWithMotion` (importado por `main.tsx`).
-- `apps/web/src/screens/OnlineGameScreen.tsx` — tablero online (EnemyPanel, mesa, mano, controles, log).
-- `apps/web/src/index.css` — todos los estilos (variables en `:root`; tipografía base `Georgia` serif).
+- `apps/web/src/screens/OnlineGameScreen.tsx` — tablero online (EnemyPanel, mesa, mano, controles, StepBanner con el registro dentro).
+- `apps/web/src/index.css` — todos los estilos (variables en `:root`; tipografía base `Alegreya` serif; paleta fría Dark Fantasy — ver V4).
 
 ## V2 (hecho)
 
@@ -95,10 +95,35 @@ Mejoras visuales y de legibilidad implementadas (commits `599cbc9`, `013c298`, `
 - **Accesibilidad**: `CardFan` como `<button>` con `aria-pressed` y teclado (tabIndex -1 si no es seleccionable); `:focus-visible` anillo dorado; `aria-live="polite"` en log/phase-hint/turn-indicator; overlays con `role="dialog"`+`aria-modal`+`aria-labelledby`; `MotionConfig reducedMotion="user"` + `@media (prefers-reduced-motion: reduce)`; landmarks (`<label htmlFor>`, tabla con `<th scope>`); `CardFace` con `aria-label` localizado; `ErrorBoundary` traducido vía `static contextType`.
 - **Tests web** (vitest + jsdom + Testing Library): `pnpm --filter @regicide/web test` (23 tests). Infra: `vitest.config.ts` (jsdom, `src/test/setup.ts`), helper `src/test/renderWithLang.tsx` (los componentes usan `useLanguage`). Cobertura: paridad de claves y placeholders entre idiomas, `interpolate`, leaderboard (fetch mocado), accesibilidad de `CardFan`, HomeScreen (menú + switch de idioma), flujo de `SetupScreen`, LeaderboardScreen (filas, vacío, error).
 
-**Caveat persistencia**: el disco de Render free tier es efímero → la tabla de posiciones se pierde en cold start/redeploy (igual que las salas). Si hace falta persistencia real, usar un servicio externo o volumen.
+**Caveat persistencia**: antes la tabla vivía en el disco efímero de Render y se perdía en cold start/redeploy. Desde V4 la persistencia real está en **Supabase** (ver V4); el JSON en disco solo queda como fallback cuando no hay `DATABASE_URL`.
+
+## V4 (hecho)
+
+Iteración visual + persistencia real de la tabla (commits `7ee999f`, `98132e6`, `265a4c2`):
+
+### Persistencia de la tabla en Supabase (P0)
+- `pg` + `@types/pg`. `PostgresLeaderboardStore` (pool max 3, tabla `scores`, `CREATE TABLE IF NOT EXISTS`, `types.setTypeParser(20, Number)` para int8). `seed` es **bigint** (uint32 no entra en int4). Orden SQL: CASE de rango (`gold` 7 … `peasant` 1) desc → enemies_defeated desc → turn_number asc → created_at asc, `LIMIT $1`.
+- `createLeaderboardStore()`: si existe `DATABASE_URL` → Postgres; si no → `FileLeaderboardStore` (`LEADERBOARD_FILE`, default `apps/server/data/leaderboard.json`).
+- `apps/server/.env` (gitignored) con la URI real (transaction pooler). Scripts `dev`/`start` usan `tsx --env-file-if-exists=.env src/main.ts`. `render.yaml` agrega `DATABASE_URL` con `sync: false`.
+- Test de integración `apps/server/test/postgres.test.ts`: se salta sin `DATABASE_URL`; usa tabla `scores_it_<Date.now()>` y la dropea al final. Correr con: `set -a && source apps/server/.env && set +a && pnpm --filter @regicide/server test`.
+
+### Paleta Dark Fantasy fría (P2)
+- Extraída programáticamente (Pillow) de las referencias `assets dark fantasy/` (gitignored). Tokens en `:root`: `--bg #0b1018`, `--bg-deep #060a10`, `--felt #16222e`, `--felt-dark #101a24`, `--accent #9fc4e8` (hielo pálido), `--ivory #e4ecf5`, `--muted #8b97a8`, `--accent-glow rgba(159,196,232,.25)`. Renombrados `--gold`→`--accent` y `--card-glow`→`--accent-glow`; rgba cálidos enfriados; `.immunity` `#b3a3c8`; `.conn-on` `#79d6b2`.
+
+### Tablero compacto a una pantalla + tipografía +~20% (P1)
+- `.game-screen` pasa a `height:100dvh; overflow:hidden` (desktop ya no scrollea); tipografía +~20% (vida, ataque, stats, labels, turno); **cartas de mano 72→104px**; media queries de altura baja escalan con `zoom` (≤880px 0.92, ≤760px 0.8) para no recortar contenido.
+
+### StepBanner (P3)
+- `apps/web/src/components/StepBanner.tsx`: el paso actual ("Paso 1/4", `aria-live`) se muestra en grande sobre la mano con botón colapsable (`aria-expanded`) que despliega la descripción completa + el **registro** de la partida. Reemplaza a `phase-hint`/`log-box`/`turn-indicator` (eliminados). Claves i18n nuevas: `stepLabel`, `detailsMore`, `detailsLess`, `logTitle`; `phaseChoose`/`phaseSuffer` ya no llevan prefijo "Paso N —".
+
+### Golpe pesado (P4)
+- `HEAVY_HIT_THRESHOLD = 10` en `EnemyPanel.tsx`: daño ≥10 muestra "−N" más grande en rojo con resplandor y sacude la carta del enemigo (`@keyframes enemy-shake`; respeta `prefers-reduced-motion`).
+
+### Arrastrar para jugar (P5)
+- `apps/web/src/hooks/useCardDrag.ts` (Pointer Events, umbral ~6px) + `apps/web/src/components/CardDragGhost.tsx` (fantasma del grupo arrastrado). Soltar sobre mesa/enemigo → `play()` (solo si `canPlay`). `CardFan` expone `onCardPointerDown` + `suppressClick` (suprime el clic posterior al arrastre); `touch-action:none` en las cartas. El clic y el botón "Jugar" siguen como fallback. Online activo solo con `isMyTurn && phase === 'choose_action'`.
 
 ## Cómo verificar cambios
 
 - Tras tocar web: `pnpm --filter @regicide/web build` y probar contra el server local en :3001 (el server sirve el build). Para el flujo online: 2 pestañas en `http://localhost:3001/`.
-- Repro CDP headless disponible (Chrome con `--remote-debugging-port=9222`) para automatizar 2 pestañas (crear sala → unir → jugar → verificar estado).
+- Repro CDP headless disponible (`/tmp/cdp_solo.js`, Chrome con `--remote-debugging-port=9222`) que automatiza solo: home → setup → tablero → screenshot → drag & drop. Revisa que el server :3001 esté vivo antes.
 - Para prod: push a `main` → Render auto-deploy → https://regicide-web.onrender.com/ (esperar cold start).

@@ -17,6 +17,7 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 | 1 | Motor de reglas (`packages/engine`) | ✅ Completa |
 | 2 | Web en modo solo (`apps/web`) | ✅ Completa |
 | 3 | Multijugador online 2-4p (`apps/server`) | ✅ Deployada |
+| 4 | V4: paleta Dark Fantasy, tablero a una pantalla, drag & drop y tabla persistente en Supabase | ✅ Deployada |
 
 ## Jugar online
 
@@ -34,7 +35,29 @@ pestañas).
 > **Avisos del plan free de Render:** el servicio duerme tras ~15 min de
 > inactividad y la primera visita tarda ~1 min en despertar (cold start). Las
 > salas viven en memoria del server: se pierden si el servicio duerme o se
-> vuelve a deployar.
+> vuelve a deployar. La **tabla de posiciones**, en cambio, persiste en
+> Supabase (Postgres externo) y sobrevive a cold starts y redeploys.
+
+## Iteración V4
+
+Cambios visuales y de persistencia de la última iteración:
+
+- **Paleta Dark Fantasy fría**: extraída programáticamente de referencias de
+  arte (negros azul-noche, superficies de pizarra y acento "hielo pálido"),
+  reemplazando los tonos cálidos anteriores.
+- **Tablero compacto a una pantalla**: el tablero ocupa toda la pantalla sin
+  scroll (desktop), con tipografía ~20% más grande y cartas de mano más
+  grandes (104px). En pantallas bajas escala con `zoom`.
+- **Banner de paso**: el paso actual ("Paso 1/4") se muestra en grande sobre
+  la mano; un botón despliega la descripción y el registro de la partida.
+- **Golpe pesado**: los daños de 10+ muestran un número grande en rojo y
+  sacuden la carta del enemigo.
+- **Arrastrar para jugar**: seleccioná y arrastrá cartas sobre la mesa (o el
+  enemigo) para jugarlas, también en móvil. El clic y el botón "Jugar"
+  siguen disponibles.
+- **Tabla de posiciones persistente**: los resultados se guardan en una
+  base de datos PostgreSQL (Supabase) vía `DATABASE_URL`; si no hay base,
+  cae a un archivo JSON local.
 
 El motor implementa las reglas del juego con **IDs trazables `[R-x]`** que
 remiten a la fuente oficial (`docs/rules-source.md`, extracto del PDF de
