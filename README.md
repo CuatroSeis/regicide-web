@@ -18,6 +18,7 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 | 2 | Web en modo solo (`apps/web`) | ✅ Completa |
 | 3 | Multijugador online 2-4p (`apps/server`) | ✅ Deployada |
 | 4 | V4: paleta Dark Fantasy, tablero a una pantalla, drag & drop y tabla persistente en Supabase | ✅ Deployada |
+| 5 | V5: autenticación (login/registro/recuperación), perfil de usuario con avatares de cartas, mejoras de accesibilidad y seguridad | ✅ Deployada |
 
 ## Jugar online
 
@@ -25,12 +26,10 @@ El modo multijugador está deployado en un solo servicio:
 
 ### **https://regicide-web.onrender.com/**
 
-1. Abre la URL en **2 a 4 pestañas o ventanas** del navegador.
-2. En una pestaña crea una sala y copia el código.
-3. En las demás únete con ese código.
-
-Cada pestaña cuenta como un jugador nuevo (la sesión no se comparte entre
-pestañas).
+1. Creá una cuenta o iniciá sesión (requiere email y contraseña).
+2. Abrí la URL en **2 a 4 pestañas o ventanas** del navegador.
+3. En una pestaña creá una sala y copiá el código.
+4. En las demás unite con ese código.
 
 > **Avisos del plan free de Render:** el servicio duerme tras ~15 min de
 > inactividad y la primera visita tarda ~1 min en despertar (cold start). Las
@@ -38,9 +37,47 @@ pestañas).
 > vuelve a deployar. La **tabla de posiciones**, en cambio, persiste en
 > Supabase (Postgres externo) y sobrevive a cold starts y redeploys.
 
+## Iteración V5
+
+### Autenticación y perfil
+
+- **Login y registro** con Supabase Auth (email + contraseña).
+- **Recuperación de contraseña** por email.
+- **Verificación de email**: tras registrarse, se muestra un modal indicando
+  que se envió un enlace de confirmación.
+- **Perfil de usuario**: nombre, email, contraseña y avatar (5 opciones
+  basadas en cartas: Sota, Reina, Rey, Comodín y As).
+- **Avatar en el menú principal**: el badge de usuario muestra el avatar
+  seleccionado y es clicable para ir al perfil.
+
+### Mejoras de accesibilidad
+
+- Auth tabs con patrón ARIA (`role="tablist"`, `role="tab"`, `aria-selected`).
+- Health bar con `role="progressbar"` y atributos ARIA.
+- Overlays con Escape para cerrar.
+- Labels de inputs asociados con `htmlFor`/`id`.
+- Textos hardcodeados traducidos al sistema i18n (antes en español).
+- Contraste de texto mejorado para elementos pequeños.
+
+### Seguridad del server
+
+- **Rate limiting** en endpoints HTTP (scores: 10/min, rooms: 5/min).
+- **Security headers**: `X-Frame-Options`, `X-Content-Type-Options`,
+  `Strict-Transport-Security`, `Referrer-Policy`.
+- **SQL injection guard**: whitelist de nombres de tabla en Postgres.
+- **Graceful shutdown**: manejo de `SIGTERM`/`SIGINT` con cleanup de pools.
+- **Room TTL**: salas idle se limpian a los 30 min, partidas en curso a las
+  2h. Máximo 200 salas simultáneas.
+
+### Font loading optimizado
+
+- La fuente Alegreya se carga con `<link>` en `index.html` en vez de
+  `@import` en CSS (reduce round trips).
+- Preconnect hints para `fonts.googleapis.com` y `fonts.gstatic.com`.
+
 ## Iteración V4
 
-Cambios visuales y de persistencia de la última iteración:
+Cambios visuales y de persistencia de la iteración anterior:
 
 - **Paleta Dark Fantasy fría**: extraída programáticamente de referencias de
   arte (negros azul-noche, superficies de pizarra y acento "hielo pálido"),
@@ -83,9 +120,10 @@ Monorepo con [pnpm workspaces](https://pnpm.io/workspaces):
 ```
 .
 ├── packages/engine   # Motor de reglas en TypeScript puro (sin dependencias)
-├── apps/web          # Frontend React + Vite + Framer Motion
-├── apps/server       # Salas por código con Socket.io + sirve el build de la web
-└── docs              # Fuente oficial de reglas con IDs [R-x]
+├── apps/web          # Frontend React + Vite + Framer Motion + Supabase Auth
+├── apps/server       # Salas por código con Socket.io + auth JWT + sirve el build de la web
+├── docs              # Fuente oficial de reglas con IDs [R-x]
+└── .opencode/skills  # Skills de desarrollo (reglas, commits, assets, dark fantasy)
 ```
 
 > `apps/server` también sirve el build estático de `apps/web` en el mismo
@@ -102,7 +140,16 @@ pnpm lint             # ESLint de todos los paquetes
 pnpm build            # build de todos los paquetes
 pnpm --filter @regicide/web dev   # levantar el frontend en modo desarrollo
 pnpm --filter @regicide/server start   # server: web estática + Socket.io en :3001
+pnpm --filter @regicide/web test  # tests de la web (Testing Library)
+pnpm --filter @regicide/engine test  # tests del motor (124 tests, coverage)
+pnpm --filter @regicide/server test  # tests del server (vitest)
 ```
+
+### Variables de entorno
+
+Las variables de entorno necesarias están documentadas en archivos ejemplo:
+- `apps/web/.env.example` — frontend (Supabase URL + anon key)
+- `apps/server/.env.example` — server (puerto, CORS, Supabase service key, database URL)
 
 ## Reglas del juego
 

@@ -94,7 +94,14 @@ export function EnemyPanel({
     <div className="enemy-panel" ref={ref}>
       <div className="enemy-health-row">
         <span className="health-label">{t('life')}</span>
-        <div className="health-bar">
+        <div
+          className="health-bar"
+          role="progressbar"
+          aria-valuenow={remaining}
+          aria-valuemin={0}
+          aria-valuemax={enemy.maxHealth}
+          aria-label={t('life')}
+        >
           <div className="health-fill" style={{ width: `${pct}%`, background: barColor }} />
         </div>
         <span className="health-value">

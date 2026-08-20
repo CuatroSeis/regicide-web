@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,500;0,700;0,900;1,400&display=swap');
-
 :root {
   --bg: #06090f;
   --bg-deep: #030509;
@@ -7,7 +5,7 @@
   --felt-dark: #0d1420;
   --accent: #9fc4e8;
   --ivory: #e4ecf5;
-  --muted: #8b97a8;
+  --muted: #9ba8b8;
   --accent-glow: rgba(159, 196, 232, 0.25);
   /* Vela (único acento cálido, family #dca26c/#f3d19c de las refs). */
   --ember: #e8ba84;
@@ -177,6 +175,39 @@ body {
   letter-spacing: 0.04em;
   color: var(--muted);
   margin-top: 0.25rem;
+}
+
+/* ---- Home header ---- */
+
+.home-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(24rem, 92vw);
+  margin-bottom: 0.5rem;
+}
+
+.user-badge {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(159, 196, 232, 0.1);
+  border: 1px solid var(--stone-edge);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.user-badge:hover {
+  border-color: var(--accent);
 }
 
 .credits {
@@ -1016,6 +1047,49 @@ body {
   flex-wrap: wrap;
 }
 
+/* ---- Auth tabs ---- */
+
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  width: min(24rem, 92vw);
+}
+
+.auth-tab {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.9rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--stone-edge);
+  padding: 0.55rem 0;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.auth-tab:first-child {
+  border-radius: 10px 0 0 10px;
+  border-right: none;
+}
+
+.auth-tab:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+.auth-tab.active {
+  color: var(--ivory);
+  background: rgba(159, 196, 232, 0.12);
+  border-color: var(--accent);
+}
+
+.auth-tab:hover:not(.active) {
+  color: var(--ivory);
+  background: rgba(159, 196, 232, 0.06);
+}
+
 .lobby-list {
   list-style: none;
   margin: 1rem 0;
@@ -1331,4 +1405,51 @@ body {
     text-transform: uppercase;
     color: var(--muted);
   }
+}
+
+/* ---- Avatar cards (perfil) ---- */
+
+.avatar-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.avatar-card svg {
+  display: block;
+}
+.avatar-card--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* ---- Perfil: form-row y divider ---- */
+
+.form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.form-row input {
+  flex: 1;
+  min-width: 0;
+}
+.form-row .menu-button {
+  flex-shrink: 0;
+}
+.divider {
+  border: none;
+  border-top: 1px solid var(--stone-edge);
+  margin: 1rem 0;
+}
+.avatar-row {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
 }

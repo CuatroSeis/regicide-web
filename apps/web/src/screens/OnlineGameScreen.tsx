@@ -4,6 +4,7 @@ import type { ScreenProps } from '../navigation';
 import type { OnlineSessionResult } from '../hooks/useOnlineGame';
 import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CardFace } from '../components/CardFace';
 import { CardFan } from '../components/CardFan';
 import { StepBanner } from '../components/StepBanner';
@@ -29,6 +30,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const { t } = useLanguage();
   const s = online.state;
   const [jesterPick, setJesterPick] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
 
   if (!s) {
     return (
@@ -117,6 +119,17 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
 
   return (
     <div className="screen game-screen">
+      {confirmLeave && (
+        <ConfirmDialog
+          title={t('confirmLeaveTitle')}
+          body={t('confirmLeaveBody')}
+          confirmLabel={t('confirmLeaveYes')}
+          cancelLabel={t('confirmLeaveNo')}
+          onConfirm={() => { online.leaveRoom(); onNavigate('home'); }}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
+
       {s.phase === 'game_over' && (
         <VictoryOverlay
           victory={s.result === 'victory'}
@@ -140,10 +153,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
             <button
               type="button"
               className="back-button"
-              onClick={() => {
-                online.leaveRoom();
-                onNavigate('home');
-              }}
+              onClick={() => setConfirmLeave(true)}
             >
               {t('menu')}
             </button>

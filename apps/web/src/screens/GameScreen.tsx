@@ -14,6 +14,7 @@ import { DeckChip } from '../components/DeckCounters';
 import { CardTravel } from '../components/CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from '../components/CardTravel';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useAuth } from '../auth/AuthContext';
 import { submitScore } from '../lib/leaderboard';
 import type { SoloSetup } from './SetupScreen';
 
@@ -27,6 +28,7 @@ interface GameScreenProps {
 
 export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: GameScreenProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const game = useGame(setup.seed);
   const s = game.snapshot;
   const player = s.players[s.currentPlayerIndex]!;
@@ -48,6 +50,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
       enemyCard: summary.enemyCard,
       jestersUsed: summary.jestersUsed,
       turnNumber: summary.turnNumber,
+      userId: user?.id ?? 'anonymous',
     }).catch(() => {
       /* La tabla es best-effort: si falla, no interrumpimos la partida. */
     });

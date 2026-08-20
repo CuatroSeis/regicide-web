@@ -8,7 +8,7 @@ import type { Card, GameResult, Suit } from '@regicide/engine';
 /** Límite de filas guardadas en la tabla de posiciones. */
 export const LEADERBOARD_MAX = 50;
 
-/** Entrada de la tabla de posiciones (partida 1p, sin cuentas). */
+/** Entrada de la tabla de posiciones (partida 1p, con usuario autenticado). */
 export interface ScoreEntry {
   readonly name: string;
   /** Semilla de la partida: identifica el juego en la tabla. */
@@ -22,6 +22,8 @@ export interface ScoreEntry {
   readonly jestersUsed: number;
   readonly turnNumber: number;
   readonly createdAt: number;
+  /** ID del usuario autenticado (Supabase auth.users.id). */
+  readonly userId: string;
 }
 
 /** Payload aceptado por POST /api/scores (el rango lo calcula el servidor). */
@@ -101,6 +103,7 @@ export function parseScoreInput(input: unknown): ScoreInput {
     enemyCard,
     jestersUsed: raw.jestersUsed,
     turnNumber,
+    userId: typeof raw.userId === 'string' && raw.userId.length > 0 ? raw.userId : 'anonymous',
   };
 }
 
@@ -197,6 +200,7 @@ export class FileLeaderboardStore implements LeaderboardStore {
         jestersUsed: entry.jestersUsed ?? 0,
         turnNumber: entry.turnNumber ?? 1,
         createdAt: typeof entry.createdAt === 'number' ? entry.createdAt : 0,
+        userId: typeof entry.userId === 'string' ? entry.userId : 'anonymous',
       };
     } catch {
       return null;
@@ -228,6 +232,10 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
   private pending: Promise<void> = Promise.resolve();
 
   constructor(connectionString: string, table = 'scores') {
+    // Whitelist table name to prevent SQL injection.
+    if (!/^[a-z_][a-z0-9_]*$/i.test(table)) {
+      throw new Error(`Invalid table name: ${table}`);
+    }
     this.table = table;
     this.pool = new Pool({ connectionString, max: 3 });
     // int8 llega como string por defecto; seed/createdAt son Number en el dominio.
@@ -247,8 +255,13 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
         enemy_card jsonb,
         jesters_used int not null check (jesters_used between 0 and 2),
         turn_number int not null,
-        created_at bigint not null
+        created_at bigint not null,
+        user_id text not null default 'anonymous'
       )
+    `);
+    // Migración: agregar user_id si falta (tablas viejas).
+    await this.pool.query(`
+      alter table ${this.table} add column if not exists user_id text not null default 'anonymous'
     `);
   }
 
@@ -277,7 +290,7 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
     const safeLimit = Math.max(1, Math.min(limit, LEADERBOARD_MAX));
     const res = await this.pool.query(
       `select name, seed, result, rank, enemies_defeated, enemy_card, jesters_used,
-              turn_number, created_at
+              turn_number, created_at, user_id
        from ${this.table}
        order by
          case rank when 'gold' then 7 when 'silver' then 6 when 'bronze' then 5
@@ -298,6 +311,7 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
       jestersUsed: row.jesters_used,
       turnNumber: row.turn_number,
       createdAt: row.created_at,
+      userId: row.user_id,
     }));
   }
 
@@ -314,8 +328,8 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
   private async insert(entry: ScoreEntry): Promise<void> {
     await this.pool.query(
       `insert into ${this.table}
-         (name, seed, result, rank, enemies_defeated, enemy_card, jesters_used, turn_number, created_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+         (name, seed, result, rank, enemies_defeated, enemy_card, jesters_used, turn_number, created_at, user_id)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         entry.name,
         entry.seed,
@@ -326,6 +340,7 @@ export class PostgresLeaderboardStore implements LeaderboardStore {
         entry.jestersUsed,
         entry.turnNumber,
         entry.createdAt,
+        entry.userId,
       ],
     );
   }

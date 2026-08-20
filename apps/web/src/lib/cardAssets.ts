@@ -1,4 +1,5 @@
 import type { Card, Suit } from '@regicide/engine';
+import type { AvatarId } from '../components/AvatarCard';
 
 /** Ruta absoluta del sprite de cartas (htdebeer/SVG-cards, LGPL-2.1). */
 export const SPRITE_PATH = '/cards/svg-cards.svg';
@@ -36,3 +37,6 @@ export function cardSpriteId(card: Card): string {
 
 /** Dorso del mazo. */
 export const BACK_SPRITE_ID = 'back';
+
+/** Avatar IDs disponibles para el perfil. */
+export const AVATAR_IDS: readonly AvatarId[] = ['jack', 'queen', 'king', 'joker', 'ace'] as const;

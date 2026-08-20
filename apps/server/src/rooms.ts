@@ -1,223 +1,243 @@
 import { randomUUID } from 'node:crypto';
-import { Game, MAX_PLAYERS, MIN_PLAYERS_TO_START, ROOM_CODE_LENGTH } from '@regicide/engine';
-import type { RoomInfo, RoomPlayerInfo } from '@regicide/engine';
+import { Game } from '@regicide/engine';
 
-/** Alfabeto sin caracteres confusos (0/O, 1/I/L) para códigos de sala. */
-const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-
-export interface CreateRoomResult {
-  readonly code: string;
-  readonly playerId: string;
-  readonly room: RoomInfo;
+/** Datos internos de un jugador dentro de una sala. */
+export interface InternalPlayer {
+  id: string;
+  name: string;
+  connected: boolean;
 }
 
-export interface LeaveRoomResult {
-  readonly closed: boolean;
-  readonly room: RoomInfo | null;
+/** Sala interna (estado del servidor). */
+export interface InternalRoom {
+  code: string;
+  players: InternalPlayer[];
+  hostId: string;
+  playerOrder: string[];
+  started: boolean;
+  maxPlayers: number;
+  createdAt: number;
+  game?: Game;
 }
 
-/** Versión mutable de `RoomPlayerInfo`: la conexión cambia en vida. */
-type InternalPlayer = Omit<RoomPlayerInfo, 'connected'> & { connected: boolean };
+/** Resultado de crear/unirse a una sala (lo que se envía al cliente). */
+export interface RoomResult {
+  code: string;
+  playerId: string;
+  room: RoomPublicInfo;
+}
 
-interface InternalRoom {
-  readonly code: string;
-  readonly players: Map<string, InternalPlayer>;
+/** Info pública de la sala para el cliente. */
+export interface RoomPublicInfo {
+  code: string;
+  players: { id: string; name: string; connected: boolean }[];
   hostId: string;
   started: boolean;
-  /** Orden de turno según llegada a la sala (indices del engine). */
-  readonly playerOrder: string[];
-  game: Game | null;
+  maxPlayers: number;
 }
 
-function randomCode(): string {
+function generateCode(): string {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]!;
+  for (let i = 0; i < 5; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
 }
 
-function sanitizeName(name: string): string {
-  const trimmed = name.trim();
-  return trimmed.length > 0 ? trimmed.slice(0, 20) : 'Jugador';
-}
-
-function makeRoomInfo(room: InternalRoom): RoomInfo {
-  return {
-    code: room.code,
-    players: [...room.players.values()],
-    started: room.started,
-    hostId: room.hostId,
-    maxPlayers: MAX_PLAYERS,
-  };
-}
-
-/**
- * Gestor de salas en memoria: creación, unión, salida, reconexión e inicio de
- * partida. No depende del transporte de Socket.io, así es testeable de forma
- * aislada. El host es el primer jugador; al irse, se transfiere al siguiente.
- */
 export class RoomManager {
   private readonly rooms = new Map<string, InternalRoom>();
+  private static readonly MAX_ROOMS = 200;
+  private static readonly IDLE_TTL = 30 * 60 * 1000; // 30 min
+  private static readonly GAME_TTL = 2 * 60 * 60 * 1000; // 2h
 
-  createRoom(name: string): CreateRoomResult {
-    const code = this.uniqueCode();
-    const playerId = randomUUID();
-    const player: InternalPlayer = { id: playerId, name: sanitizeName(name), connected: true };
+  /** Limpia salas expiradas (llamar periódicamente). */
+  cleanup(): void {
+    const now = Date.now();
+    for (const [code, room] of this.rooms) {
+      const ttl = room.started ? RoomManager.GAME_TTL : RoomManager.IDLE_TTL;
+      if (now - room.createdAt > ttl) {
+        this.rooms.delete(code);
+      }
+    }
+  }
+
+  /** Crea una sala con el jugador como host. */
+  createRoom(name: string, userId?: string): RoomResult {
+    this.cleanup();
+    if (this.rooms.size >= RoomManager.MAX_ROOMS) {
+      throw new Error('Demasiadas salas activas. Intentá más tarde.');
+    }
+    const code = this.findFreeCode();
+    const playerId = userId ?? randomUUID();
+    const player: InternalPlayer = { id: playerId, name: truncateName(name), connected: true };
     const room: InternalRoom = {
       code,
-      players: new Map([[playerId, player]]),
+      players: [player],
       hostId: playerId,
-      started: false,
       playerOrder: [playerId],
-      game: null,
+      started: false,
+      maxPlayers: 4,
+      createdAt: Date.now(),
     };
     this.rooms.set(code, room);
-    return { code, playerId, room: makeRoomInfo(room) };
+    return { code, playerId, room: this.toPublic(room) };
   }
 
-  joinRoom(code: string, name: string): CreateRoomResult {
-    const room = this.requireRoom(code);
-    if (room.started) {
-      throw new Error('La partida ya comenzó en esta sala');
+  /** Une un jugador a una sala existente. */
+  joinRoom(code: string, name: string, userId?: string): RoomResult {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) throw new Error('Sala no encontrada');
+    if (room.started) throw new Error('ya comenzó');
+    if (room.players.length >= room.maxPlayers) throw new Error('Sala llena');
+
+    const playerId = userId ?? randomUUID();
+
+    // Si el userId ya está en la sala (rejoin tras desconexión), re-conectar.
+    const existing = room.players.find((p) => p.id === playerId);
+    if (existing) {
+      existing.connected = true;
+      return { code: room.code, playerId, room: this.toPublic(room) };
     }
-    if (room.players.size >= MAX_PLAYERS) {
-      throw new Error(`La sala está llena (máximo ${MAX_PLAYERS} jugadores)`);
-    }
-    const playerId = randomUUID();
-    const player: InternalPlayer = { id: playerId, name: sanitizeName(name), connected: true };
-    room.players.set(playerId, player);
+
+    const player: InternalPlayer = { id: playerId, name: truncateName(name), connected: true };
+    room.players.push(player);
     room.playerOrder.push(playerId);
-    return { code, playerId, room: makeRoomInfo(room) };
+    return { code: room.code, playerId, room: this.toPublic(room) };
   }
 
-  /** Reconoce a un jugador ya registrado (p. ej. tras recargar la pestaña). */
+  /** Re-une un jugador desconectado (por ID). */
   rejoinRoom(
     code: string,
     playerId: string,
-    options?: { force?: boolean },
-  ): { room: RoomInfo; name: string } {
-    const room = this.requireRoom(code);
-    const player = room.players.get(playerId);
-    if (!player) {
-      throw new Error('No estás en esta sala');
-    }
-    if (player.connected && !options?.force) {
-      throw new Error('Ya hay una conexión activa con ese jugador');
-    }
-    player.connected = true;
-    return { room: makeRoomInfo(room), name: player.name };
-  }
-
-  leaveRoom(code: string, playerId: string): LeaveRoomResult {
+    opts?: { force?: boolean },
+  ): { room: RoomPublicInfo; name: string } {
     const room = this.rooms.get(code);
-    if (!room) return { closed: true, room: null };
-    room.players.delete(playerId);
-    const orderIndex = room.playerOrder.indexOf(playerId);
-    if (orderIndex !== -1) room.playerOrder.splice(orderIndex, 1);
+    if (!room) throw new Error('Sala no encontrada');
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) throw new Error('No estás en esta sala');
 
-    if (room.players.size === 0) {
-      this.rooms.delete(code);
-      return { closed: true, room: null };
+    if (!opts?.force && player.connected) {
+      throw new Error('conexión activa');
     }
-    if (room.hostId === playerId) {
-      room.hostId = this.firstConnectedId(room);
-    }
-    return { closed: false, room: makeRoomInfo(room) };
+
+    player.connected = true;
+    return { room: this.toPublic(room), name: player.name };
   }
 
-  /** Marca a un jugador como desconectado sin expulsarlo de la sala. */
-  setDisconnected(code: string, playerId: string): RoomInfo | null {
+  /** Sale de la sala. Si queda vacía, la cierra. */
+  leaveRoom(code: string, playerId: string): { room: RoomPublicInfo | null; closed: boolean } {
+    const room = this.rooms.get(code);
+    if (!room) return { room: null, closed: true };
+
+    room.players = room.players.filter((p) => p.id !== playerId);
+    room.playerOrder = room.playerOrder.filter((id) => id !== playerId);
+
+    if (room.players.length === 0) {
+      this.rooms.delete(code);
+      return { room: null, closed: true };
+    }
+
+    // Si el host se fue, transferir al siguiente conectado.
+    if (room.hostId === playerId) {
+      const nextHost = room.players.find((p) => p.connected);
+      if (nextHost) room.hostId = nextHost.id;
+    }
+
+    return { room: this.toPublic(room), closed: false };
+  }
+
+  /** Marca un jugador como desconectado. */
+  setDisconnected(code: string, playerId: string): RoomPublicInfo | null {
     const room = this.rooms.get(code);
     if (!room) return null;
-    const player = room.players.get(playerId);
-    if (player) {
-      player.connected = false;
-      if (room.hostId === playerId) {
-        room.hostId = this.firstConnectedId(room);
-      }
+    const player = room.players.find((p) => p.id === playerId);
+    if (player) player.connected = false;
+    // Si el host se desconectó, transferir al siguiente conectado.
+    if (room.hostId === playerId) {
+      const nextHost = room.players.find((p) => p.connected);
+      if (nextHost) room.hostId = nextHost.id;
     }
-    return makeRoomInfo(room);
+    return this.toPublic(room);
   }
 
-  startGame(code: string, hostId: string, seed?: number): RoomInfo {
-    const room = this.requireRoom(code);
-    if (room.started) {
-      throw new Error('La partida ya comenzó');
-    }
-    if (room.hostId !== hostId) {
-      throw new Error('Solo el host puede iniciar la partida');
-    }
-    if (room.players.size < MIN_PLAYERS_TO_START) {
-      throw new Error(`Se necesitan al menos ${MIN_PLAYERS_TO_START} jugadores`);
-    }
-    if ([...room.players.values()].some((p) => !p.connected)) {
-      throw new Error('Hay jugadores desconectados en la sala');
-    }
-    const gameSeed = seed ?? (Math.random() * 0xffffffff) >>> 0;
-    room.game = new Game({ playerCount: room.players.size, seed: gameSeed, playerIds: room.playerOrder });
+  /** Inicia la partida (solo el host). */
+  startGame(code: string, hostId: string, seed?: number): RoomPublicInfo {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error('Sala no encontrada');
+    if (room.hostId !== hostId) throw new Error('Solo el host puede iniciar');
+    if (room.started) throw new Error('La partida ya empezó');
+    if (room.players.length < 2) throw new Error('Se necesitan al menos 2 jugadores');
+    if (!room.players.every((p) => p.connected)) throw new Error('Hay jugadores desconectados');
+
     room.started = true;
-    return makeRoomInfo(room);
+    room.game = new Game({ playerCount: room.playerOrder.length, seed, playerIds: room.playerOrder });
+    return this.toPublic(room);
   }
 
-  /**
-   * Ejecuta una acción sobre la partida del remitente previa validación de
-   * identidad: solo el jugador con el turno actual puede actuar. Las reglas
-   * las valida el engine (sin duplicar lógica aquí).
-   */
-  applyAction(code: string, playerId: string, action: (game: Game) => void): void {
-    const room = this.requireRoom(code);
-    if (!room.started || !room.game) {
-      throw new Error('La partida aún no comenzó');
-    }
-    const current = room.game.snapshot.players[room.game.snapshot.currentPlayerIndex]!;
-    if (current.id !== playerId) {
+  /** Aplica una acción del juego y valida que sea el turno del jugador. */
+  applyAction(
+    code: string,
+    playerId: string,
+    action: (game: Game) => void,
+  ): void {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error('Sala no encontrada');
+    if (!room.started) throw new Error('aún no comenzó');
+
+    const game = room.game;
+    if (!game) throw new Error('Juego no inicializado');
+
+    const snapshot = game.snapshot;
+    const currentPlayer = snapshot.players[snapshot.currentPlayerIndex];
+    if (!currentPlayer || currentPlayer.id !== playerId) {
       throw new Error('No es tu turno');
     }
-    action(room.game);
+
+    action(game);
   }
 
-  getRoom(code: string): RoomInfo | null {
-    const room = this.rooms.get(code.toUpperCase());
-    return room ? makeRoomInfo(room) : null;
-  }
-
-  /** Instancia del engine para una sala iniciada; `null` si no existe o no empezó. */
-  getGame(code: string): Game | null {
+  /** Obtiene el juego de una sala. */
+  getGame(code: string): Game | undefined {
     const room = this.rooms.get(code);
-    return room?.started && room.game ? room.game : null;
+    return room?.game;
   }
 
-  /** IDs de jugador en orden de turno (o `[]` si la sala no existe). */
+  /** Obtiene el orden de jugadores de una sala. */
   getPlayerOrder(code: string): string[] {
+    return this.rooms.get(code)?.playerOrder ?? [];
+  }
+
+  /** Obtiene la sala pública. */
+  getRoom(code: string): RoomPublicInfo | null {
     const room = this.rooms.get(code);
-    return room ? [...room.playerOrder] : [];
+    return room ? this.toPublic(room) : null;
   }
 
-  closeRoom(code: string): void {
-    this.rooms.delete(code);
-  }
-
-  private requireRoom(code: string): InternalRoom {
-    const room = this.rooms.get(code.toUpperCase());
-    if (!room) {
-      throw new Error('Sala no encontrada');
-    }
-    return room;
-  }
-
-  private uniqueCode(): string {
-    for (let attempts = 0; attempts < 100; attempts++) {
-      const code = randomCode();
+  private findFreeCode(): string {
+    for (let attempt = 0; attempt < 100; attempt++) {
+      const code = generateCode();
       if (!this.rooms.has(code)) return code;
     }
-    throw new Error('No se pudo generar un código de sala único');
+    throw new Error('No se pudo generar un código único');
   }
 
-  private firstConnectedId(room: InternalRoom): string {
-    for (const id of room.playerOrder) {
-      if (room.players.get(id)?.connected) return id;
-    }
-    return room.playerOrder[0]!;
+  private toPublic(room: InternalRoom): RoomPublicInfo {
+    return {
+      code: room.code,
+      players: room.players.map((p) => ({
+        id: p.id,
+        name: p.name,
+        connected: p.connected,
+      })),
+      hostId: room.hostId,
+      started: room.started,
+      maxPlayers: room.maxPlayers,
+    };
   }
+}
+
+function truncateName(name: string): string {
+  const trimmed = name.trim().slice(0, 20);
+  return trimmed.length > 0 ? trimmed : 'Jugador';
 }

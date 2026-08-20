@@ -7,6 +7,7 @@ import type {
   RoomInfo,
   ServerToClientEvents,
 } from '@regicide/engine';
+import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'regicide.online.session';
 
@@ -61,9 +62,21 @@ export interface OnlineSessionResult {
 export function useOnlineGame(): OnlineSessionResult {
   const socketRef = useRef<OnlineSocket | null>(null);
   if (socketRef.current === null) {
-    socketRef.current = io();
+    // Crear socket con auth vacío; se actualiza con el JWT en el effect.
+    socketRef.current = io({ auth: {} });
   }
   const socket = socketRef.current;
+
+  // Actualizar el JWT del socket cuando la sesión de Supabase cambie.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      const token = s?.access_token;
+      if (socketRef.current) {
+        socketRef.current.auth = { token: token ?? undefined };
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const [connected, setConnected] = useState(socket.connected);
   const [room, setRoom] = useState<RoomInfo | null>(null);

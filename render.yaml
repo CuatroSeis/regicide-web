@@ -13,3 +13,7 @@ services:
       # Se configura en el dashboard (sync:false evita que se pise con el repo).
       - key: DATABASE_URL
         sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

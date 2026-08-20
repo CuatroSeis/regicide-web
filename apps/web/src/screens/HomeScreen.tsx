@@ -1,5 +1,7 @@
 import type { Card } from '@regicide/engine';
 import type { Screen, ScreenProps } from '../navigation';
+import { useAuth, displayName, avatarId } from '../auth/AuthContext';
+import { AvatarCard } from '../components/AvatarCard';
 import { CardFan } from '../components/CardFan';
 import { useLanguage } from '../i18n/LanguageContext';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
@@ -19,6 +21,10 @@ interface MenuOption {
 
 export function HomeScreen({ onNavigate }: ScreenProps) {
   const { t } = useLanguage();
+  const { user, signOut } = useAuth();
+  const name = displayName(user);
+  const avatar = avatarId(user);
+
   const MENU_OPTIONS: MenuOption[] = [
     { id: 'setup', label: t('menuSolo') },
     { id: 'room', label: t('menuOnline'), hint: t('menuOnlineHint') },
@@ -28,7 +34,19 @@ export function HomeScreen({ onNavigate }: ScreenProps) {
 
   return (
     <div className="screen">
-      <LanguageSwitcher />
+      <div className="home-header">
+        <LanguageSwitcher />
+        <button
+          type="button"
+          className="user-badge"
+          title={user?.email ?? ''}
+          onClick={() => onNavigate('profile')}
+        >
+          <AvatarCard avatarId={avatar} size={28} />
+          <span>{name}</span>
+        </button>
+      </div>
+
       <h1 className="title">REGICIDIO</h1>
       <p className="subtitle">{t('homeSubtitle')}</p>
 
@@ -48,6 +66,14 @@ export function HomeScreen({ onNavigate }: ScreenProps) {
           </li>
         ))}
       </ul>
+
+      <button
+        type="button"
+        className="back-button"
+        onClick={signOut}
+      >
+        {t('authLogout')}
+      </button>
 
       <p className="credits">{t('homeCredits')}</p>
     </div>

@@ -3,9 +3,9 @@ import type { Locale } from './LanguageContext';
 
 /** Selector de idioma de la aplicación (es/en/pt). */
 export function LanguageSwitcher() {
-  const { locale, setLocale } = useLanguage();
+  const { locale, setLocale, t } = useLanguage();
   return (
-    <div className="lang-switcher" role="group" aria-label="Idioma / Language">
+    <div className="lang-switcher" role="group" aria-label={t('langLabel')}>
       {LOCALES.map((option) => (
         <button
           key={option.id}

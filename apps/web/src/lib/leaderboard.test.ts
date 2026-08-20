@@ -2,6 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchLeaderboard, submitScore } from './leaderboard';
 import type { ScoreInput } from './leaderboard';
 
+vi.mock('../lib/supabase', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
+    },
+  },
+}));
+
 const ENTRY = {
   name: 'Ana',
   seed: 123,
@@ -12,6 +20,7 @@ const ENTRY = {
   jestersUsed: 0,
   turnNumber: 24,
   createdAt: 1720000000000,
+  userId: 'user-123',
 };
 
 afterEach(() => {
@@ -48,6 +57,7 @@ describe('submitScore', () => {
       enemyCard: null,
       jestersUsed: 0,
       turnNumber: 24,
+      userId: 'user-123',
     };
     vi.stubGlobal(
       'fetch',

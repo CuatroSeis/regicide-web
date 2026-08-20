@@ -12,6 +12,7 @@ import type {
 import { RoomManager } from './rooms.js';
 import { createLeaderboardStore, parseScoreInput } from './leaderboard.js';
 import type { LeaderboardStore, ScoreInput } from './leaderboard.js';
+import { verifyToken, extractBearerToken, type AuthUser } from './auth.js';
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? 'http://localhost:5173';
@@ -34,6 +35,7 @@ const MIME_TYPES: Record<string, string> = {
 interface SocketData {
   roomCode?: string;
   playerId?: string;
+  authUser?: AuthUser;
 }
 
 type GameServer = Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
@@ -42,10 +44,34 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, Soc
 /** playerId → socketId, para reenviar el estado individual de cada jugador. */
 const socketByPlayerId = new Map<string, string>();
 
+/** Rate limiting simple: IP → timestamps de requests. */
+const rateLimits = new Map<string, number[]>();
+const RATE_WINDOW = 60_000;
+const RATE_MAX_SCORES = 10;
+const RATE_MAX_ROOMS = 5;
+
+function checkRate(ip: string, max: number): boolean {
+  const now = Date.now();
+  const hits = rateLimits.get(ip) ?? [];
+  const recent = hits.filter((t) => now - t < RATE_WINDOW);
+  if (recent.length >= max) return false;
+  recent.push(now);
+  rateLimits.set(ip, recent);
+  return true;
+}
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+
 export function createGameServer(options?: { leaderboard?: LeaderboardStore }): GameServer {
-  // Sirve el build estático de la web con fallback SPA; los paths de socket.io
-  // los maneja el engine de Socket.io (no respondemos acá).
   const httpServer = createServer((req, res) => {
+    for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      res.setHeader(key, value);
+    }
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
     if (pathname.startsWith('/socket.io/')) return;
     void handleApi(req, res, leaderboard).then((handled) => {
@@ -60,14 +86,33 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
       cors: {
         origin: CLIENT_ORIGIN.split(',').map((origin) => origin.trim()),
       },
+      pingInterval: 30_000,
+      pingTimeout: 10_000,
     },
   );
   const roomManager = new RoomManager();
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
+    // Verificar JWT si se provee en el handshake.
+    const token = (socket.handshake.auth as Record<string, unknown>)?.token;
+    if (typeof token === 'string' && token.length > 0) {
+      try {
+        socket.data.authUser = await verifyToken(token);
+      } catch {
+        // Token inválido: permite conectar pero sin auth (solo spectate/rejoin
+        // con playerId guardado en sessionStorage).
+      }
+    }
+
     socket.on('room:create', (payload, ack) => {
       try {
-        const result = roomManager.createRoom(payload.name);
+        const ip = socket.handshake.address;
+        if (!checkRate(ip, RATE_MAX_ROOMS)) {
+          ack({ ok: false, error: 'Demasiadas salas. Esperá un momento.' });
+          return;
+        }
+        const authUser = socket.data.authUser;
+        const result = roomManager.createRoom(payload.name, authUser?.userId);
         bind(socket, io, roomManager, result.code, result.playerId);
         socket.join(channel(result.code));
         io.to(channel(result.code)).emit('room:updated', result.room);
@@ -79,7 +124,8 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
 
     socket.on('room:join', (payload, ack) => {
       try {
-        const result = roomManager.joinRoom(payload.code, payload.name);
+        const authUser = socket.data.authUser;
+        const result = roomManager.joinRoom(payload.code, payload.name, authUser?.userId);
         bind(socket, io, roomManager, result.code, result.playerId);
         socket.join(channel(result.code));
         io.to(channel(result.code)).emit('room:updated', result.room);
@@ -91,8 +137,6 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
 
     socket.on('room:rejoin', (payload, ack) => {
       try {
-        // Si el jugador aún tiene un socket activo (recarga rápida), se
-        // reemplaza: el socket viejo se desconecta y el nuevo toma la sesión.
         const existing = roomManager.getRoom(payload.code)?.players.find(
           (player) => player.id === payload.playerId,
         );
@@ -135,8 +179,8 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
     socket.on('game:start', (ack) => {
       try {
         const { roomCode, playerId } = requireBinding(socket);
-        const room = roomManager.startGame(roomCode, playerId);
-        io.to(channel(roomCode)).emit('room:updated', room);
+        roomManager.startGame(roomCode, playerId);
+        io.to(channel(roomCode)).emit('room:updated', roomManager.getRoom(roomCode)!);
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
@@ -197,7 +241,6 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
     socket.on('disconnect', () => {
       const { roomCode, playerId } = socket.data;
       if (!roomCode || !playerId) return;
-      // Si otro socket ya tomó este playerId (rejoin), no marcar desconectado.
       if (socketByPlayerId.get(playerId) !== socket.id) {
         socket.data = {};
         return;
@@ -229,13 +272,13 @@ function bind(
     io.sockets.sockets.get(previousSocketId)?.leave(channel(code));
   }
   socketByPlayerId.set(playerId, socket.id);
-  socket.data = { roomCode: code, playerId };
+  socket.data = { ...socket.data, roomCode: code, playerId };
 }
 
 function unbind(socket: GameSocket, code: string, playerId: string): void {
   socketByPlayerId.delete(playerId);
   socket.leave(channel(code));
-  socket.data = {};
+  socket.data = { ...socket.data, roomCode: undefined, playerId: undefined };
 }
 
 function syncRoom(io: GameServer, roomManager: RoomManager, code: string): void {
@@ -288,9 +331,8 @@ async function handleApi(
   const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
   if (req.method === 'GET' && pathname === '/api/leaderboard') {
     try {
-      const limit = Number(
-        new URL(req.url ?? '/', 'http://localhost').searchParams.get('limit') ?? 50,
-      );
+      const raw = Number(new URL(req.url ?? '/', 'http://localhost').searchParams.get('limit') ?? 50);
+      const limit = Math.max(1, Math.min(Number.isFinite(raw) ? raw : 50, 50));
       sendJson(res, 200, { entries: await leaderboard.list(limit) });
     } catch (err) {
       sendJson(res, 500, { error: message(err) });
@@ -298,9 +340,31 @@ async function handleApi(
     return true;
   }
   if (req.method === 'POST' && pathname === '/api/scores') {
+    const ip = req.socket.remoteAddress ?? 'unknown';
+    if (!checkRate(ip, RATE_MAX_SCORES)) {
+      sendJson(res, 429, { error: 'Demasiadas solicitudes. Esperá un momento.' });
+      return true;
+    }
     void readBody(req)
-      .then((body) => {
-        const input: ScoreInput = parseScoreInput(body);
+      .then(async (body) => {
+        const raw = body as Record<string, unknown>;
+        // Si se provee un token, verificar y usar el userId; si no, allow anonymous.
+        const token = extractBearerToken(req.headers.authorization);
+        if (token) {
+          try {
+            const authUser = await verifyToken(token);
+            raw.userId = authUser.userId;
+            if (!raw.name || (typeof raw.name === 'string' && raw.name.trim().length === 0)) {
+              raw.name = authUser.displayName;
+            }
+          } catch {
+            // Token inválido: permitir como anónimo.
+            raw.userId = raw.userId ?? 'anonymous';
+          }
+        } else {
+          raw.userId = raw.userId ?? 'anonymous';
+        }
+        const input: ScoreInput = parseScoreInput(raw);
         const entry = leaderboard.add(input);
         sendJson(res, 201, { entry });
       })
@@ -364,11 +428,20 @@ function message(err: unknown): string {
 
 export function startServer(port = PORT, options?: { leaderboard?: LeaderboardStore }): GameServer {
   const io = createGameServer(options);
-  // OJO: no usar io.listen(port) — al recibir un número, Socket.io crea un
-  // http.Server nuevo que responde 404 a todo lo que no sea /socket.io.
-  // Escuchamos nuestro propio server para que el estático funcione.
   io.httpServer.listen(port, () => {
     console.log(`Regicide server escuchando en http://localhost:${port}`);
   });
+
+  // Graceful shutdown
+  const shutdown = () => {
+    console.log('Cerrando server...');
+    io.close(() => {
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 5000);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+
   return io;
 }

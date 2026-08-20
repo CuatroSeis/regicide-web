@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import type { ScreenProps } from '../navigation';
+import { useAuth, displayName } from '../auth/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
-
-const NAME_KEY = 'regicide.name';
 
 export interface SoloSetup {
   name: string;
@@ -17,19 +15,12 @@ function randomSeed(): number {
   return (Math.random() * 0xffffffff) >>> 0;
 }
 
-export function rememberName(name: string): void {
-  localStorage.setItem(NAME_KEY, name.trim());
-}
-
-export function rememberedName(): string {
-  return localStorage.getItem(NAME_KEY) ?? '';
-}
-
 /** Nombre + semilla de la partida 1p (la semilla identifica la partida en la tabla). */
 export function SetupScreen({ onStart, onNavigate }: SetupScreenProps) {
   const { t } = useLanguage();
-  const [name, setName] = useState(rememberedName);
-  const ready = name.trim().length > 0;
+  const { user } = useAuth();
+  const name = displayName(user);
+  const seed = randomSeed();
 
   return (
     <div className="screen">
@@ -38,27 +29,14 @@ export function SetupScreen({ onStart, onNavigate }: SetupScreenProps) {
       </h1>
       <p className="subtitle">{t('setupSubtitle')}</p>
 
-      <div className="form">
-        <label htmlFor="solo-name">{t('setupNameLabel')}</label>
-        <input
-          id="solo-name"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t('setupNamePlaceholder')}
-          maxLength={20}
-          autoFocus
-        />
-      </div>
+      <p className="muted" style={{ marginBottom: '1rem' }}>
+        {t('authLoggedAs', { name })}
+      </p>
 
       <button
         type="button"
         className="menu-button"
-        disabled={!ready}
-        onClick={() => {
-          const clean = name.trim();
-          rememberName(clean);
-          onStart({ name: clean, seed: randomSeed() });
-        }}
+        onClick={() => onStart({ name, seed })}
       >
         {t('setupStart')}
       </button>

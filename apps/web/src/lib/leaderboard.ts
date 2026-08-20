@@ -1,4 +1,5 @@
 import type { Card, GameResult, SoloRank } from '@regicide/engine';
+import { supabase } from './supabase';
 
 /** Entrada de la tabla de posiciones (misma forma que el server). */
 export interface LeaderboardEntry {
@@ -11,6 +12,7 @@ export interface LeaderboardEntry {
   readonly jestersUsed: number;
   readonly turnNumber: number;
   readonly createdAt: number;
+  readonly userId: string;
 }
 
 /** Payload a enviar: el server calcula rank/createdAt. */
@@ -26,9 +28,17 @@ export async function fetchLeaderboard(limit = 50): Promise<LeaderboardEntry[]> 
 
 /** Registra un resultado de partida 1p en la tabla del servidor. */
 export async function submitScore(input: ScoreInput): Promise<LeaderboardEntry> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+  };
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+  }
   const res = await fetch('/api/scores', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: JSON.stringify(input),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

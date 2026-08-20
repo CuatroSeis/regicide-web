@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { ScreenProps } from '../navigation';
 import type { OnlineSessionResult } from '../hooks/useOnlineGame';
+import { useAuth, displayName } from '../auth/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 interface RoomScreenProps extends ScreenProps {
   online: OnlineSessionResult;
@@ -9,12 +11,13 @@ interface RoomScreenProps extends ScreenProps {
 
 export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
   const { t } = useLanguage();
-  const [name, setName] = useState('');
+  const { user } = useAuth();
+  const name = displayName(user);
   const [code, setCode] = useState('');
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const room = online.room;
 
   if (!room) {
-    const nameReady = name.trim().length > 0;
     const codeReady = code.trim().length === 5;
     return (
       <div className="screen">
@@ -24,19 +27,14 @@ export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
         <p className="subtitle">{t('onlineSubtitle')}</p>
         {!online.connected && <p className="muted">{t('connecting')}</p>}
 
-        <div className="form">
-          <label>{t('yourName')}</label>
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder={t('setupNamePlaceholder')}
-            maxLength={20}
-          />
-        </div>
+        <p className="muted" style={{ marginBottom: '1rem' }}>
+          {t('authLoggedAs', { name })}
+        </p>
 
         <div className="form">
-          <label>{t('roomCode')}</label>
+          <label htmlFor="room-code-input">{t('roomCode')}</label>
           <input
+            id="room-code-input"
             value={code}
             onChange={(event) => setCode(event.target.value.toUpperCase())}
             placeholder="ABC12"
@@ -46,7 +44,7 @@ export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
             <button
               type="button"
               className="menu-button"
-              disabled={!online.connected || !nameReady}
+              disabled={!online.connected}
               onClick={() => online.createRoom(name)}
             >
               {t('createRoom')}
@@ -54,7 +52,7 @@ export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
             <button
               type="button"
               className="menu-button"
-              disabled={!online.connected || !nameReady || !codeReady}
+              disabled={!online.connected || !codeReady}
               onClick={() => online.joinRoom(code, name)}
             >
               {t('joinRoom')}
@@ -80,6 +78,17 @@ export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
 
   return (
     <div className="screen">
+      {confirmLeave && (
+        <ConfirmDialog
+          title={t('confirmLeaveTitle')}
+          body={t('confirmLeaveBody')}
+          confirmLabel={t('confirmLeaveYes')}
+          cancelLabel={t('confirmLeaveNo')}
+          onConfirm={() => { online.leaveRoom(); onNavigate('home'); }}
+          onCancel={() => setConfirmLeave(false)}
+        />
+      )}
+
       <h1 className="title" style={{ fontSize: 'clamp(2rem, 6vw, 3rem)' }}>
         {t('roomCodeX', { code: room.code })}
       </h1>
@@ -116,10 +125,7 @@ export function RoomScreen({ online, onNavigate }: RoomScreenProps) {
       <button
         type="button"
         className="back-button"
-        onClick={() => {
-          online.leaveRoom();
-          onNavigate('home');
-        }}
+        onClick={() => setConfirmLeave(true)}
       >
         {t('leaveRoom')}
       </button>

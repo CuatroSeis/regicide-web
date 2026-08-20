@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@regicide/engine": "workspace:*",
+    "@supabase/supabase-js": "^2.112.3",
     "framer-motion": "^13.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
