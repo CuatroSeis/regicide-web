@@ -19,6 +19,7 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 | 3 | Multijugador online 2-4p (`apps/server`) | ✅ Deployada |
 | 4 | V4: paleta Dark Fantasy, tablero a una pantalla, drag & drop y tabla persistente en Supabase | ✅ Deployada |
 | 5 | V5: autenticación (login/registro/recuperación), perfil de usuario con avatares de cartas, mejoras de accesibilidad y seguridad | ✅ Deployada |
+| 6 | V6: avatares con arte real de cartas, registro y errores del juego traducidos (es/en/pt) | ✅ Completa |
 
 ## Jugar online
 
@@ -36,6 +37,36 @@ El modo multijugador está deployado en un solo servicio:
 > salas viven en memoria del server: se pierden si el servicio duerme o se
 > vuelve a deployar. La **tabla de posiciones**, en cambio, persiste en
 > Supabase (Postgres externo) y sobrevive a cold starts y redeploys.
+
+## Iteración V6
+
+### Avatares con el arte real de las cartas
+
+- Los avatares de perfil usaban los ids genéricos del sprite (`#king`,
+  `#queen`…), que son **glifos de texto** de las esquinas, no ilustraciones:
+  se veían las letras J/Q/K/A en vez del dibujo.
+- Ahora `AVATAR_ART` recorta la **figura central real** de cartas del sprite
+  (♠K, ♥Q, ♣J, pipa de ♠A y Joker rojo) con `viewBox` medidos sobre
+  `svg-cards.svg`. Sin assets nuevos.
+- El badge de usuario ya no descentra nombres largos (ellipsis sobre el
+  texto, no sobre el botón).
+
+### i18n completo del juego
+
+- El motor emite el registro como **eventos estructurados**
+  (`LogEntry { key, args }`) en vez de strings en español; la web los
+  traduce e interpola según el idioma activo.
+- Los errores visibles al usuario usan **códigos estables**
+  (`GameError.code`, ~30 códigos): el server los reenvía en los acks y la
+  web los mapea a mensajes localizados (es/en/pt). Adiós errores crudos
+  en un solo idioma.
+
+### Endurecimiento de auth
+
+- Si faltan las variables de Supabase en el build, la pantalla de login
+  muestra un aviso claro localizado en vez de fallar con "Not configured".
+- Los errores de recuperación de contraseña también pasan por el
+  traductor de mensajes de Supabase Auth.
 
 ## Iteración V5
 
@@ -141,15 +172,40 @@ pnpm build            # build de todos los paquetes
 pnpm --filter @regicide/web dev   # levantar el frontend en modo desarrollo
 pnpm --filter @regicide/server start   # server: web estática + Socket.io en :3001
 pnpm --filter @regicide/web test  # tests de la web (Testing Library)
-pnpm --filter @regicide/engine test  # tests del motor (124 tests, coverage)
+pnpm --filter @regicide/engine test  # tests del motor (254 tests, coverage)
 pnpm --filter @regicide/server test  # tests del server (vitest)
 ```
 
 ### Variables de entorno
 
-Las variables de entorno necesarias están documentadas en archivos ejemplo:
-- `apps/web/.env.example` — frontend (Supabase URL + anon key)
-- `apps/server/.env.example` — server (puerto, CORS, Supabase service key, database URL)
+Los archivos ejemplo documentan las variables locales:
+- `apps/web/.env.example` — frontend (Supabase URL + publishable key)
+- `apps/server/.env.example` — server (puerto, CORS, Supabase secret key, database URL)
+
+**En producción (Render)** el servicio necesita estas 5 variables:
+
+| Variable en Render | Valor (dashboard de Supabase → Settings → API) |
+|---|---|
+| `VITE_SUPABASE_URL` | Project URL (`https://<proyecto>.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | Publishable key (`sb_publishable_…`) — pública por diseño |
+| `SUPABASE_URL` | La misma Project URL |
+| `SUPABASE_SERVICE_KEY` | Secret key (`sb_secret_…`) ⚠️ nunca exponer al cliente |
+| `DATABASE_URL` | Cadena Postgres (leaderboard; pooler de transacciones) |
+
+> **Importante**: las variables `VITE_*` se leen **en tiempo de build**
+> (Vite las inlinea en el bundle). Si se cambian en el dashboard hay que
+> disparar un **Manual Deploy** para que el nuevo build las incorpore.
+
+## Deploy
+
+- Un solo servicio en [Render](https://render.com) (`render.yaml`), plan free.
+- **Auto-deploy**: cada push a `main` dispara el build vía webhook de GitHub
+  en el repo. Si los pushes no deployan, verificar
+  *GitHub repo → Settings → Webhooks* (debe existir el hook de Render).
+- El server sirve el build estático de `apps/web/dist` + Socket.io en el
+  mismo origen. Salud: `healthCheckPath: /`.
+- Las salas viven en memoria (ver avisos arriba); su persistencia es la
+  candidata natural para una próxima iteración.
 
 ## Reglas del juego
 
