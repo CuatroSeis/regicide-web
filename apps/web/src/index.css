@@ -8,8 +8,6 @@
   --muted: #9ba8b8;
   --accent-glow: rgba(159, 196, 232, 0.25);
   /* Vela (único acento cálido, family #dca26c/#f3d19c de las refs). */
-  --ember: #e8ba84;
-  --ember-glow: rgba(232, 186, 132, 0.16);
   --vignette: rgba(1, 3, 6, 0.55);
   --panel-bg: rgba(13, 20, 30, 0.82);
   --stone-edge: rgba(159, 196, 232, 0.3);
