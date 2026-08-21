@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { ScreenProps } from '../navigation';
 import { useAuth } from '../auth/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
-import type { TranslationKey } from '../i18n/translations';
+import { translateAuthError } from '../lib/authErrors';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 type AuthTab = 'login' | 'register';
 
@@ -155,15 +156,10 @@ export function AuthScreen({ onNavigate, onForgotPassword }: AuthScreenProps) {
           {t('authForgotPassword')}
         </button>
       )}
+
+      {!isSupabaseConfigured() && (
+        <div className="error-banner" role="alert">{t('authErrorNotConfigured')}</div>
+      )}
     </div>
   );
-}
-
-function translateAuthError(msg: string, t: (key: TranslationKey) => string): string {
-  if (msg.includes('Invalid login credentials')) return t('authErrorInvalid');
-  if (msg.includes('User already registered')) return t('authErrorAlreadyRegistered');
-  if (msg.includes('Password should be at least')) return t('authErrorShortPassword');
-  if (msg.includes('Unable to validate email address')) return t('authErrorInvalidEmail');
-  if (msg.includes('Email not confirmed')) return t('authEmailNotConfirmed');
-  return msg;
 }

@@ -178,6 +178,7 @@ const es = {
   'authVerifyEmailBody': 'Te enviamos un enlace a {email}. Revisá tu bandeja para activar la cuenta.',
   'authVerifyEmailButton': 'Entendido',
   'authEmailNotConfirmed': 'Tu email aún no fue verificado. Revisá tu bandeja.',
+  'authErrorNotConfigured': 'Inicio de sesión no disponible: falta configurar Supabase en el servidor.',
 
   // ---- Auth: errores traducidos ----
   'authErrorInvalid': 'Credenciales inválidas',
@@ -379,6 +380,7 @@ const en: Record<TranslationKey, string> = {
   authVerifyEmailBody: 'We sent a link to {email}. Check your inbox to activate your account.',
   authVerifyEmailButton: 'Got it',
   authEmailNotConfirmed: 'Your email has not been verified yet. Check your inbox.',
+  authErrorNotConfigured: 'Sign-in unavailable: Supabase is not configured on the server.',
 
   authErrorInvalid: 'Invalid credentials',
   authErrorAlreadyRegistered: 'An account with that email already exists',
@@ -573,6 +575,7 @@ const pt: Record<TranslationKey, string> = {
   authVerifyEmailBody: 'Enviamos um link para {email}. Verifique sua caixa de entrada para ativar a conta.',
   authVerifyEmailButton: 'Entendi',
   authEmailNotConfirmed: 'Seu email ainda não foi verificado. Verifique sua caixa de entrada.',
+  authErrorNotConfigured: 'Login indisponível: o Supabase não está configurado no servidor.',
 
   authErrorInvalid: 'Credenciais inválidas',
   authErrorAlreadyRegistered: 'Já existe uma conta com esse email',

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ScreenProps } from '../navigation';
 import { useAuth } from '../auth/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import { translateAuthError } from '../lib/authErrors';
 
 interface ForgotPasswordScreenProps extends ScreenProps {
   onBack: () => void;
@@ -22,7 +23,7 @@ export function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenProps) {
     const result = await resetPassword(email.trim());
     setSubmitting(false);
     if (result.error) {
-      setError(result.error);
+      setError(translateAuthError(result.error, t));
     } else {
       setSent(true);
     }

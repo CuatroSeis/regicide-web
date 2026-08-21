@@ -35,3 +35,8 @@ function createSupabaseClient(): SupabaseClient {
 }
 
 export const supabase = createSupabaseClient();
+
+/** true si hay credenciales de Supabase (si no, el cliente es un stub). */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(url && anonKey);
+}
