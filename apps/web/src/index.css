@@ -196,15 +196,18 @@ body {
   border: 1px solid var(--stone-edge);
   border-radius: 999px;
   padding: 0.25rem 0.75rem;
-  max-width: 10rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 12rem;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   cursor: pointer;
   transition: border-color 0.15s;
+}
+.user-badge span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-badge:hover {
   border-color: var(--accent);

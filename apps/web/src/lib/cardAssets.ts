@@ -38,5 +38,20 @@ export function cardSpriteId(card: Card): string {
 /** Dorso del mazo. */
 export const BACK_SPRITE_ID = 'back';
 
-/** Avatar IDs disponibles para el perfil. */
-export const AVATAR_IDS: readonly AvatarId[] = ['jack', 'queen', 'king', 'joker', 'ace'] as const;
+/**
+ * Arte de avatar: recorte de la figura real de cada carta del sprite
+ * (viewBox acotado al panel de arte interior, sin índices de esquina).
+ * Coordenadas medidas sobre svg-cards v4 (ver V6).
+ */
+export interface AvatarArt {
+  spriteId: string;
+  viewBox: string;
+}
+
+export const AVATAR_ART: Record<AvatarId, AvatarArt> = {
+  king: { spriteId: 'spade_king', viewBox: '10.5 10.5 148 223.6' },
+  queen: { spriteId: 'heart_queen', viewBox: '10.5 10.5 148 223.6' },
+  jack: { spriteId: 'club_jack', viewBox: '10.5 10.5 148 223.6' },
+  ace: { spriteId: 'spade_1', viewBox: '63.8 90.8 42.2 48' },
+  joker: { spriteId: 'joker_red', viewBox: '10 10 149 224.6' },
+};

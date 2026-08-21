@@ -1,16 +1,8 @@
-import { SPRITE_PATH } from '../lib/cardAssets';
+import { SPRITE_PATH, AVATAR_ART } from '../lib/cardAssets';
 
 export type AvatarId = 'jack' | 'queen' | 'king' | 'joker' | 'ace';
 
 export const AVATAR_IDS: readonly AvatarId[] = ['jack', 'queen', 'king', 'joker', 'ace'];
-
-const AVATAR_SPRITE: Record<AvatarId, string> = {
-  jack: 'jack',
-  queen: 'queen',
-  king: 'king',
-  joker: 'joker_full',
-  ace: 'ace',
-};
 
 interface AvatarCardProps {
   avatarId: AvatarId;
@@ -20,7 +12,7 @@ interface AvatarCardProps {
 }
 
 export function AvatarCard({ avatarId, size = 48, selected, onClick }: AvatarCardProps) {
-  const spriteId = AVATAR_SPRITE[avatarId];
+  const art = AVATAR_ART[avatarId];
   const isButton = Boolean(onClick);
   const className = selected ? 'avatar-card avatar-card--selected' : 'avatar-card';
 
@@ -34,8 +26,8 @@ export function AvatarCard({ avatarId, size = 48, selected, onClick }: AvatarCar
         aria-pressed={selected}
         aria-label={avatarId}
       >
-        <svg viewBox="0 0 100 100" width={size} height={size}>
-          <use href={`${SPRITE_PATH}#${spriteId}`} />
+        <svg viewBox={art.viewBox} width={size} height={size} aria-hidden="true">
+          <use href={`${SPRITE_PATH}#${art.spriteId}`} />
         </svg>
       </button>
     );
@@ -43,8 +35,8 @@ export function AvatarCard({ avatarId, size = 48, selected, onClick }: AvatarCar
 
   return (
     <span className={className} style={{ width: size, height: size }} aria-label={avatarId}>
-      <svg viewBox="0 0 100 100" width={size} height={size}>
-        <use href={`${SPRITE_PATH}#${spriteId}`} />
+      <svg viewBox={art.viewBox} width={size} height={size} aria-hidden="true">
+        <use href={`${SPRITE_PATH}#${art.spriteId}`} />
       </svg>
     </span>
   );
