@@ -43,6 +43,25 @@ export type Phase = 'choose_action' | 'suffer_damage' | 'game_over';
 
 export type GameResult = 'victory' | 'defeat';
 
+/** Eventos que el engine registra en el log de la partida. */
+export type LogKey =
+  | 'game_start'
+  | 'play_cards'
+  | 'yield'
+  | 'cover_fail_defeat'
+  | 'stuck_defeat'
+  | 'jester_solo'
+  | 'jester_multi';
+
+/**
+ * Entrada estructurada del log: la capa de UI traduce `key` y interpola
+ * `args` (los ids de jugador los resuelve el server antes de emitir).
+ */
+export interface LogEntry {
+  readonly key: LogKey;
+  readonly args?: Readonly<Record<string, string | number>>;
+}
+
 /** Estado serializable del RNG por semilla (mulberry32). Determinista entre clientes. */
 export interface RngState {
   a: number;
@@ -75,7 +94,7 @@ export interface GameState {
   turnNumber: number;
   /** Daño infligido al enemigo en la última jugada (0 si no hubo ataque). */
   lastDamageDealt: number;
-  log: string[];
+  log: LogEntry[];
 }
 
 export const SUITS: readonly Suit[] = ['clubs', 'diamonds', 'hearts', 'spades'];

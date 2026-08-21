@@ -1,4 +1,5 @@
-import type { Card, Enemy, GameResult, GameState, Phase, PlayedCard } from './types.js';
+import type { Card, Enemy, GameResult, GameState, LogEntry, Phase, PlayedCard } from './types.js';
+import type { GameErrorCode } from './errors.js';
 
 /** Longitud del código de sala generado por el servidor. */
 export const ROOM_CODE_LENGTH = 5;
@@ -28,7 +29,7 @@ export interface PublicGameState {
   readonly jestersUsed: number;
   readonly turnNumber: number;
   readonly lastDamageDealt: number;
-  readonly log: readonly string[];
+  readonly log: readonly LogEntry[];
 }
 
 /** Vista de un jugador: vista pública + su propia mano. */
@@ -99,11 +100,17 @@ export interface RoomInfo {
 
 export type Ack<T> = (result: T) => void;
 
+/** Código estable opcional para que el cliente traduzca el error. */
+export interface AckError {
+  error: string;
+  errorCode?: GameErrorCode;
+}
+
 export type RoomAck =
   | { ok: true; code: string; playerId: string; playerName: string; room: RoomInfo }
-  | { ok: false; error: string };
+  | ({ ok: false } & AckError);
 
-export type GameAck = { ok: true } | { ok: false; error: string };
+export type GameAck = { ok: true } | ({ ok: false } & AckError);
 
 export interface ServerToClientEvents {
   /** Estado sincronizado (público + mano propia). Se reenvía entero al reconectar. */
@@ -119,7 +126,7 @@ export interface ClientToServerEvents {
   'room:join': (payload: { code: string; name: string }, ack: Ack<RoomAck>) => void;
   /** Reconexión de un jugador desconectado (p. ej. tras recargar la pestaña). */
   'room:rejoin': (payload: { code: string; playerId: string }, ack: Ack<RoomAck>) => void;
-  'room:leave': (ack?: Ack<{ ok: boolean; error?: string }>) => void;
+  'room:leave': (ack?: Ack<{ ok: boolean; error?: string; errorCode?: GameErrorCode }>) => void;
   'game:start': (ack?: Ack<GameAck>) => void;
   'game:play': (payload: { cardIds: string[] }, ack?: Ack<GameAck>) => void;
   'game:yield': (ack?: Ack<GameAck>) => void;

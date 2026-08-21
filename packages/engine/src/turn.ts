@@ -1,4 +1,5 @@
 import type { Card, GameState, PlayedCard, Player, Suit } from './types.js';
+import { GameError } from './errors.js';
 import {
   applySuitPowers,
   computeDamage,
@@ -48,21 +49,21 @@ function checkCoverOrDie(state: GameState): void {
   state.gameOver = true;
   state.result = 'defeat';
   state.phase = 'game_over';
-  state.log.push('Un jugador no puede cubrir el ataque: derrota');
+  state.log.push({ key: 'cover_fail_defeat' });
 }
 
 function resolveHandCards(player: Player, cardIds: readonly string[]): Card[] {
   if (cardIds.length === 0) {
-    throw new Error('Debes seleccionar al menos una carta');
+    throw new GameError('empty_selection', 'Debes seleccionar al menos una carta');
   }
   const byId = new Map(player.hand.map((card) => [card.id, card]));
   if (new Set(cardIds).size !== cardIds.length) {
-    throw new Error('Carta repetida en la selección');
+    throw new GameError('duplicate_card', 'Carta repetida en la selección');
   }
   const cards: Card[] = [];
   for (const id of cardIds) {
     const card = byId.get(id);
-    if (!card) throw new Error(`La carta ${id} no está en la mano`);
+    if (!card) throw new GameError('card_not_in_hand', `La carta ${id} no está en la mano`);
     cards.push(card);
   }
   return cards;
@@ -78,7 +79,7 @@ function resolveHandCards(player: Player, cardIds: readonly string[]): Card[] {
 function validateGroup(cards: readonly Card[]): void {
   const n = cards.length;
   if (cards.some((card) => card.kind === 'jester')) {
-    throw new Error('El Jester no se juega como carta de ataque');
+    throw new GameError('jester_not_attack', 'El Jester no se juega como carta de ataque');
   }
   const hasAce = cards.some((card) => card.kind === 'ace');
   const sameRank = cards.every((card) => card.rank === cards[0]!.rank);
@@ -86,20 +87,20 @@ function validateGroup(cards: readonly Card[]): void {
   if (n === 2) {
     if (hasAce) return;
     if (sameRank && totalValueOf(cards) <= 10) return;
-    throw new Error('Jugada inválida: solo pares del mismo número ≤ 10 o un As con otra carta');
+    throw new GameError('invalid_play', 'Jugada inválida: solo pares del mismo número ≤ 10 o un As con otra carta');
   }
   if (n === 3 || n === 4) {
     if (!hasAce && sameRank && totalValueOf(cards) <= 10) return;
-    throw new Error(`Jugada inválida: combos de ${n} solo del mismo número y suma ≤ 10`);
+    throw new GameError('invalid_play', `Jugada inválida: combos de ${n} solo del mismo número y suma ≤ 10`);
   }
-  throw new Error(`Jugada inválida: no se pueden jugar ${n} cartas así`);
+  throw new GameError('invalid_play', `Jugada inválida: no se pueden jugar ${n} cartas así`);
 }
 
 /** Paso 1 [R-6][R-7][R-8][R-24]: valida la jugada y devuelve las cartas resueltas. */
 export function validatePlay(state: GameState, cardIds: readonly string[]): Card[] {
-  if (state.gameOver) throw new Error('La partida ya terminó');
+  if (state.gameOver) throw new GameError('game_over', 'La partida ya terminó');
   if (state.phase !== 'choose_action') {
-    throw new Error('No se pueden jugar cartas en esta fase');
+    throw new GameError('wrong_phase_play', 'No se pueden jugar cartas en esta fase');
   }
   const cards = resolveHandCards(state.players[state.currentPlayerIndex]!, cardIds);
   validateGroup(cards);
@@ -161,9 +162,10 @@ export function playCards(state: GameState, cardIds: readonly string[]): PlayRes
     checkCoverOrDie(state);
   }
 
-  state.log.push(
-    `Jugador ${player.id} juega ${cards.length} carta(s) (valor ${totalValue}, daño ${damageDealt})`,
-  );
+  state.log.push({
+    key: 'play_cards',
+    args: { player: player.id, count: cards.length, value: totalValue, damage: damageDealt },
+  });
   return { totalValue, clubsActive, damageDealt, enemyDefeated, exactKill, victory };
 }
 
@@ -175,16 +177,16 @@ export function canYield(state: GameState): boolean {
 /** [R-9] Rendirse: salta Steps 2-3 y va directo al Step 4 (sufrir daño). */
 export function yieldTurn(state: GameState): void {
   if (state.phase !== 'choose_action') {
-    throw new Error('No te puedes rendir en esta fase');
+    throw new GameError('wrong_phase_yield', 'No te puedes rendir en esta fase');
   }
   if (!canYield(state)) {
-    throw new Error('No puedes rendirte: todos los demás se rindieron en su último turno');
+    throw new GameError('yield_blocked_all', 'No puedes rendirte: todos los demás se rindieron en su último turno');
   }
   state.consecutiveYields += 1;
   state.lastDamageDealt = 0;
   state.phase = 'suffer_damage';
   checkCoverOrDie(state);
-  state.log.push(`Jugador ${state.players[state.currentPlayerIndex]!.id} se rinde`);
+  state.log.push({ key: 'yield', args: { player: state.players[state.currentPlayerIndex]!.id } });
 }
 
 /**
@@ -219,7 +221,7 @@ function checkStuck(state: GameState): void {
     state.gameOver = true;
     state.result = 'defeat';
     state.phase = 'game_over';
-    state.log.push('Un jugador se quedó sin cartas y sin Jester: derrota');
+    state.log.push({ key: 'stuck_defeat' });
   }
 }
 
@@ -229,7 +231,7 @@ function checkStuck(state: GameState): void {
  */
 export function discardToSurvive(state: GameState, cardIds: readonly string[]): void {
   if (state.phase !== 'suffer_damage') {
-    throw new Error('No hay daño que cubrir en esta fase');
+    throw new GameError('wrong_phase_cover', 'No hay daño que cubrir en esta fase');
   }
   const player = state.players[state.currentPlayerIndex]!;
   const required = effectiveAttack(state.enemy);
@@ -256,13 +258,13 @@ export function discardToSurvive(state: GameState, cardIds: readonly string[]): 
  */
 export function jesterSolo(state: GameState): void {
   if (state.players.length !== 1) {
-    throw new Error('El poder del Jester en solitario es solo para un jugador');
+    throw new GameError('jester_solo_single_only', 'El poder del Jester en solitario es solo para un jugador');
   }
   if (state.phase !== 'choose_action' && state.phase !== 'suffer_damage') {
-    throw new Error('El Jester solo puede usarse al inicio del paso 1 o del paso 4');
+    throw new GameError('jester_wrong_phase', 'El Jester solo puede usarse al inicio del paso 1 o del paso 4');
   }
   if (state.jestersLeft <= 0) {
-    throw new Error('No quedan Jesters disponibles');
+    throw new GameError('no_jesters_left', 'No quedan Jesters disponibles');
   }
   const player = state.players[0]!;
   state.discardPile.push(...player.hand);
@@ -272,7 +274,7 @@ export function jesterSolo(state: GameState): void {
   }
   state.jestersLeft -= 1;
   state.jestersUsed += 1;
-  state.log.push('El Jester se activa: mano descartada y recargada');
+  state.log.push({ key: 'jester_solo' });
   checkCoverOrDie(state);
   checkStuck(state);
 }
@@ -289,23 +291,23 @@ export function victoryLevel(state: GameState): 'gold' | 'silver' | 'bronze' {
  * sea derrotado [R-18](ii).
  */
 export function playJester(state: GameState, nextPlayerIndex: number): void {
-  if (state.gameOver) throw new Error('La partida ya terminó');
+  if (state.gameOver) throw new GameError('game_over', 'La partida ya terminó');
   if (state.phase !== 'choose_action') {
-    throw new Error('No se puede jugar el Jester en esta fase');
+    throw new GameError('jester_wrong_phase', 'No se puede jugar el Jester en esta fase');
   }
   if (state.players.length === 1) {
-    throw new Error('El Jester como jugada solo aplica en multijugador');
+    throw new GameError('jester_multi_only', 'El Jester como jugada solo aplica en multijugador');
   }
   const player = state.players[state.currentPlayerIndex]!;
   const jester = player.hand.find((card) => card.kind === 'jester');
-  if (!jester) throw new Error('No tienes un Jester en la mano');
+  if (!jester) throw new GameError('no_jester_in_hand', 'No tienes un Jester en la mano');
   if (nextPlayerIndex < 0 || nextPlayerIndex >= state.players.length) {
-    throw new Error('Jugador destino inválido');
+    throw new GameError('invalid_target', 'Jugador destino inválido');
   }
   // TODO(regla-ambigua): "the player of the Jester chooses any player to go next"
   // — se asume que no puede elegirse a sí mismo para evitar turnos consecutivos.
   if (nextPlayerIndex === state.currentPlayerIndex) {
-    throw new Error('El Jester debe elegir a otro jugador para ir después');
+    throw new GameError('jester_self_target', 'El Jester debe elegir a otro jugador para ir después');
   }
 
   player.hand = player.hand.filter((card) => card.id !== jester.id);
@@ -327,8 +329,9 @@ export function playJester(state: GameState, nextPlayerIndex: number): void {
   state.currentPlayerIndex = nextPlayerIndex;
   state.phase = 'choose_action';
   state.turnNumber += 1;
-  state.log.push(
-    `Jugador ${player.id} juega el Jester y elige a ${state.players[nextPlayerIndex]!.id}`,
-  );
+  state.log.push({
+    key: 'jester_multi',
+    args: { player: player.id, target: state.players[nextPlayerIndex]!.id },
+  });
   checkStuck(state);
 }

@@ -73,7 +73,7 @@ export function createGame(options: CreateGameOptions = {}): GameState {
     jestersUsed: 0,
     turnNumber: 1,
     lastDamageDealt: 0,
-    log: [`Partida iniciada: ${playerCount} jugador(es)`],
+    log: [{ key: 'game_start', args: { count: playerCount } }],
   };
 }
 
