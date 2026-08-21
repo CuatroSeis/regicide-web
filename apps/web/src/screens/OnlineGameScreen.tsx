@@ -15,6 +15,7 @@ import { CardDragGhost } from '../components/CardDragGhost';
 import { useCardDrag } from '../hooks/useCardDrag';
 import { useFitWidth } from '../hooks/useFitWidth';
 import { handMetrics } from '../lib/handMetrics';
+import { formatLogEntry } from '../lib/logFormat';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface OnlineGameScreenProps extends ScreenProps {
@@ -54,7 +55,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
   const isSuffering = s.phase === 'suffer_damage';
   const canYieldNow = s.isMyTurn && s.phase === 'choose_action' && localCanYield(s.consecutiveYields, s.players.length);
   const victoryLevel = s.result === 'victory' ? (s.jestersUsed === 0 ? 'gold' : s.jestersUsed === 1 ? 'silver' : 'bronze') : null;
-  const logTail = s.log.slice(-5);
+  const logTail = s.log.slice(-5).map((entry) => formatLogEntry(entry, t));
   const roomNameById = new Map((online.room?.players ?? []).map((p) => [p.id, p.name]));
   const currentName = roomNameById.get(s.players[s.currentPlayerIndex]!.id) ?? t('player');
   const gamePlayerIds = new Set(s.players.map((p) => p.id));

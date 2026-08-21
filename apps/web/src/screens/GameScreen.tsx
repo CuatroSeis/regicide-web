@@ -4,6 +4,7 @@ import { useGame } from '../hooks/useGame';
 import { useCardDrag } from '../hooks/useCardDrag';
 import { useFitWidth } from '../hooks/useFitWidth';
 import { handMetrics } from '../lib/handMetrics';
+import { formatLogEntry } from '../lib/logFormat';
 import { CardDragGhost } from '../components/CardDragGhost';
 import { EnemyPanel } from '../components/EnemyPanel';
 import { VictoryOverlay } from '../components/VictoryOverlay';
@@ -56,7 +57,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
     });
   }, [s.result, summary, setup]);
 
-  const logTail = s.log.slice(-5);
+  const logTail = s.log.slice(-5).map((entry) => formatLogEntry(entry, t));
 
   const banner =
     s.phase === 'choose_action'

@@ -3,11 +3,14 @@ import { io, type Socket } from 'socket.io-client';
 import { cardValue, effectiveAttack } from '@regicide/engine';
 import type {
   ClientToServerEvents,
+  GameErrorCode,
   PlayerGameState,
   RoomInfo,
   ServerToClientEvents,
 } from '@regicide/engine';
 import { supabase } from '../lib/supabase';
+import { ackErrorMessage } from '../lib/ackErrors';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const STORAGE_KEY = 'regicide.online.session';
 
@@ -66,6 +69,11 @@ export function useOnlineGame(): OnlineSessionResult {
     socketRef.current = io({ auth: {} });
   }
   const socket = socketRef.current;
+  const { t } = useLanguage();
+  const translateAck = useCallback(
+    (ack: { error?: string; errorCode?: GameErrorCode }) => ackErrorMessage(ack, t),
+    [t],
+  );
 
   // Actualizar el JWT del socket cuando la sesión de Supabase cambie.
   useEffect(() => {
@@ -103,7 +111,7 @@ export function useOnlineGame(): OnlineSessionResult {
             sessionRef.current = null;
             clearSession();
             setMyPlayerId(null);
-            setError(ack.error);
+            setError(translateAck(ack));
           }
         });
       }
@@ -146,7 +154,7 @@ export function useOnlineGame(): OnlineSessionResult {
           saveSession(sessionRef.current);
           setMyPlayerId(ack.playerId);
         } else {
-          setError(ack.error);
+          setError(translateAck(ack));
         }
       });
     },
@@ -161,7 +169,7 @@ export function useOnlineGame(): OnlineSessionResult {
           saveSession(sessionRef.current);
           setMyPlayerId(ack.playerId);
         } else {
-          setError(ack.error);
+          setError(translateAck(ack));
         }
       });
     },
@@ -178,39 +186,39 @@ export function useOnlineGame(): OnlineSessionResult {
         clearSession();
         setMyPlayerId(null);
       } else if (ack.error) {
-        setError(ack.error);
+        setError(translateAck(ack));
       }
     });
   }, [socket]);
 
   const startGame = useCallback(() => {
     socket.emit('game:start', (ack) => {
-      if (!ack.ok) setError(ack.error);
+      if (!ack.ok) setError(translateAck(ack));
     });
   }, [socket]);
 
   const play = useCallback(() => {
     socket.emit('game:play', { cardIds: selected }, (ack) => {
-      if (!ack.ok) setError(ack.error);
+      if (!ack.ok) setError(translateAck(ack));
     });
   }, [socket, selected]);
 
   const yieldTurn = useCallback(() => {
     socket.emit('game:yield', (ack) => {
-      if (!ack.ok) setError(ack.error);
+      if (!ack.ok) setError(translateAck(ack));
     });
   }, [socket]);
 
   const discard = useCallback(() => {
     socket.emit('game:discard', { cardIds: selected }, (ack) => {
-      if (!ack.ok) setError(ack.error);
+      if (!ack.ok) setError(translateAck(ack));
     });
   }, [socket, selected]);
 
   const playJester = useCallback(
     (nextPlayerId: string) => {
       socket.emit('game:play-jester', { nextPlayerId }, (ack) => {
-        if (!ack.ok) setError(ack.error);
+        if (!ack.ok) setError(translateAck(ack));
       });
     },
     [socket],

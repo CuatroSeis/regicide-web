@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Game } from '@regicide/engine';
+import { Game, GameError } from '@regicide/engine';
 
 /** Datos internos de un jugador dentro de una sala. */
 export interface InternalPlayer {
@@ -66,7 +66,7 @@ export class RoomManager {
   createRoom(name: string, userId?: string): RoomResult {
     this.cleanup();
     if (this.rooms.size >= RoomManager.MAX_ROOMS) {
-      throw new Error('Demasiadas salas activas. Intentá más tarde.');
+      throw new GameError('too_many_rooms', 'Demasiadas salas activas. Intentá más tarde.');
     }
     const code = this.findFreeCode();
     const playerId = userId ?? randomUUID();
@@ -87,9 +87,9 @@ export class RoomManager {
   /** Une un jugador a una sala existente. */
   joinRoom(code: string, name: string, userId?: string): RoomResult {
     const room = this.rooms.get(code.toUpperCase());
-    if (!room) throw new Error('Sala no encontrada');
-    if (room.started) throw new Error('ya comenzó');
-    if (room.players.length >= room.maxPlayers) throw new Error('Sala llena');
+    if (!room) throw new GameError('room_not_found', 'Sala no encontrada');
+    if (room.started) throw new GameError('room_already_started', 'La partida ya comenzó');
+    if (room.players.length >= room.maxPlayers) throw new GameError('room_full', 'Sala llena');
 
     const playerId = userId ?? randomUUID();
 
@@ -113,12 +113,12 @@ export class RoomManager {
     opts?: { force?: boolean },
   ): { room: RoomPublicInfo; name: string } {
     const room = this.rooms.get(code);
-    if (!room) throw new Error('Sala no encontrada');
+    if (!room) throw new GameError('room_not_found', 'Sala no encontrada');
     const player = room.players.find((p) => p.id === playerId);
-    if (!player) throw new Error('No estás en esta sala');
+    if (!player) throw new GameError('not_in_room', 'No estás en esta sala');
 
     if (!opts?.force && player.connected) {
-      throw new Error('conexión activa');
+      throw new GameError('active_connection', 'Ya tenés una conexión activa');
     }
 
     player.connected = true;
@@ -164,11 +164,11 @@ export class RoomManager {
   /** Inicia la partida (solo el host). */
   startGame(code: string, hostId: string, seed?: number): RoomPublicInfo {
     const room = this.rooms.get(code);
-    if (!room) throw new Error('Sala no encontrada');
-    if (room.hostId !== hostId) throw new Error('Solo el host puede iniciar');
-    if (room.started) throw new Error('La partida ya empezó');
-    if (room.players.length < 2) throw new Error('Se necesitan al menos 2 jugadores');
-    if (!room.players.every((p) => p.connected)) throw new Error('Hay jugadores desconectados');
+    if (!room) throw new GameError('room_not_found', 'Sala no encontrada');
+    if (room.hostId !== hostId) throw new GameError('host_only', 'Solo el host puede iniciar');
+    if (room.started) throw new GameError('room_already_started', 'La partida ya empezó');
+    if (room.players.length < 2) throw new GameError('need_two_players', 'Se necesitan al menos 2 jugadores');
+    if (!room.players.every((p) => p.connected)) throw new GameError('players_disconnected', 'Hay jugadores desconectados');
 
     room.started = true;
     room.game = new Game({ playerCount: room.playerOrder.length, seed, playerIds: room.playerOrder });
@@ -182,16 +182,16 @@ export class RoomManager {
     action: (game: Game) => void,
   ): void {
     const room = this.rooms.get(code);
-    if (!room) throw new Error('Sala no encontrada');
-    if (!room.started) throw new Error('aún no comenzó');
+    if (!room) throw new GameError('room_not_found', 'Sala no encontrada');
+    if (!room.started) throw new GameError('room_not_started', 'La partida aún no comenzó');
 
     const game = room.game;
-    if (!game) throw new Error('Juego no inicializado');
+    if (!game) throw new GameError('game_not_initialized', 'Juego no inicializado');
 
     const snapshot = game.snapshot;
     const currentPlayer = snapshot.players[snapshot.currentPlayerIndex];
     if (!currentPlayer || currentPlayer.id !== playerId) {
-      throw new Error('No es tu turno');
+      throw new GameError('not_your_turn', 'No es tu turno');
     }
 
     action(game);

@@ -3,7 +3,8 @@ import { stat } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { Server, type Socket } from 'socket.io';
-import { playerSnapshot } from '@regicide/engine';
+import { playerSnapshot, GameError } from '@regicide/engine';
+import type { GameErrorCode } from '@regicide/engine';
 import type {
   ClientToServerEvents,
   PlayerGameState,
@@ -108,7 +109,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
       try {
         const ip = socket.handshake.address;
         if (!checkRate(ip, RATE_MAX_ROOMS)) {
-          ack({ ok: false, error: 'Demasiadas salas. Esperá un momento.' });
+          ack({ ok: false, error: 'Demasiadas salas. Esperá un momento.', errorCode: 'too_many_rooms' });
           return;
         }
         const authUser = socket.data.authUser;
@@ -118,7 +119,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         io.to(channel(result.code)).emit('room:updated', result.room);
         ack({ ok: true, ...result, playerName: result.room.players[0]!.name });
       } catch (err) {
-        ack({ ok: false, error: message(err) });
+        ack({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -131,7 +132,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         io.to(channel(result.code)).emit('room:updated', result.room);
         ack({ ok: true, ...result, playerName: playerName(roomManager, result.code, result.playerId) });
       } catch (err) {
-        ack({ ok: false, error: message(err) });
+        ack({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -156,7 +157,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         }
         ack({ ok: true, code: room.code, playerId: payload.playerId, playerName: name, room });
       } catch (err) {
-        ack({ ok: false, error: message(err) });
+        ack({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -172,7 +173,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         }
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -184,7 +185,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -195,7 +196,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -206,7 +207,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -217,7 +218,7 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -227,14 +228,14 @@ export function createGameServer(options?: { leaderboard?: LeaderboardStore }): 
         roomManager.applyAction(roomCode, playerId, (game) => {
           const index = game.snapshot.players.findIndex((p) => p.id === payload.nextPlayerId);
           if (index === -1) {
-            throw new Error('Jugador destino desconocido');
+            throw new GameError('unknown_target', 'Jugador destino desconocido');
           }
           game.playJester(index);
         });
         syncRoom(io, roomManager, roomCode);
         ack?.({ ok: true });
       } catch (err) {
-        ack?.({ ok: false, error: message(err) });
+        ack?.({ ok: false, error: message(err), errorCode: errorCode(err) });
       }
     });
 
@@ -298,16 +299,20 @@ function syncPlayer(io: GameServer, roomManager: RoomManager, code: string, play
 
 function withPlayerNames(manager: RoomManager, code: string, snapshot: PlayerGameState): PlayerGameState {
   const names = new Map((manager.getRoom(code)?.players ?? []).map((p) => [p.id, p.name]));
-  const log = snapshot.log.map((line) =>
-    [...names.entries()].reduce((text, [id, name]) => text.replaceAll(id, name), line),
-  );
+  const log = snapshot.log.map((entry) => {
+    if (!entry.args) return entry;
+    const args = Object.fromEntries(
+      Object.entries(entry.args).map(([k, v]) => [k, typeof v === 'string' ? names.get(v) ?? v : v]),
+    );
+    return { ...entry, args };
+  });
   return { ...snapshot, log };
 }
 
 function requireBinding(socket: GameSocket): { roomCode: string; playerId: string } {
   const { roomCode, playerId } = socket.data;
   if (!roomCode || !playerId) {
-    throw new Error('No estás en una sala');
+    throw new GameError('not_in_room', 'No estás en una sala');
   }
   return { roomCode, playerId };
 }
@@ -424,6 +429,11 @@ async function servePublicFile(pathname: string, res: ServerResponse): Promise<v
 
 function message(err: unknown): string {
   return err instanceof Error ? err.message : 'Error inesperado';
+}
+
+/** Código estable del error para que el cliente lo traduzca (undefined si es genérico). */
+function errorCode(err: unknown): GameErrorCode | undefined {
+  return err instanceof GameError ? err.code : undefined;
 }
 
 export function startServer(port = PORT, options?: { leaderboard?: LeaderboardStore }): GameServer {
