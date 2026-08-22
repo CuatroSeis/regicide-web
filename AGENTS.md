@@ -159,6 +159,33 @@ Iteración "fortaleza gótica en ruinas" + glow corregido + mano responsive (sin
 - **Fix**: nuevo wrapper `.game-inner` (flex column con gap/justify) dentro de `.game-screen`; el `zoom` responsive ahora escala `.game-inner` (contenido) mientras `.game-screen` conserva escala 1 y recorta a 100dvh real. Elementos `position:fixed` (VictoryOverlay, CardTravel, CardDragGhost, overlay Jester) quedan **fuera** de `.game-inner` (no se escalan).
 - Complemento: en `@media (max-height:760px) and (min-width:641px)` se compacta `.enemy-panel` (gap/padding) y `.enemy-card-wrap` para que banner abierto + controles entren en una pantalla.
 
+## V7 (hecho)
+
+Tablero unificado + rivales visibles + drawer de detalles + mesa protagonista (commits `cc5284f`…`7f95322`, tests en `0bfe3bc`; ver `git log`).
+
+### GameBoard compartido (refactor previo a todo)
+- Nuevo `apps/web/src/components/GameBoard.tsx`: renderiza el shell completo del tablero (header → EnemyPanel → mesa → error → StepBanner → mano → controles) y es dueño de refs de zonas (deck/discard/hand/table/enemy), `useFitWidth`+`handMetrics`, `useCardDrag` y CardTravel/CardDragGhost. Recibe estado normalizado + habilitaciones (`isMyTurn`, `canPlay`, `canYieldNow`, `showJester`) + acciones, y los overlays propios de cada modo como `children`.
+- `GameScreen.tsx` (solo) y `OnlineGameScreen.tsx` quedaron como adaptadores delgados: calculan el banner (difiere: solo = "Paso N"; online = "Turno de X" cuando esperás), mapean snapshot/PlayerGameState a props y conservan sus overlays (VictoryOverlay con rank/leaderboard vs ConfirmDialog de salida + overlay de elección de Jester). El botón Jester lleva contador "(N)" solo en solitario; en online abre el overlay de destino.
+- **Al tocar la UI in-game, cambiar GameBoard una vez** (no duplicar en dos screens).
+
+### RivalsPanel online
+- `apps/web/src/components/RivalsPanel.tsx` en el slot derecho del header (`headerRight` prop): chip por rival humano con nombre (ellipsis), contador de cartas restantes, punto verde/gris de conexión (`.rival-dot.conn-on`) y anillo dorado si tiene el turno (`.rival-chip--current`). En solitario no se pasa `headerRight` (header simétrico, costo vertical cero).
+- Datos: `room.players` (nombre/conexión) cruzado con `s.players[]` (`handCount`) por id; clave i18n `rivalChipAria`.
+
+### StepBanner como drawer flotante
+- `.step-banner-body` pasó de flujo (42dvh que aplastaba la mano) a `position:absolute` bajo el head (z-30 sobre cartas seleccionadas z-15/20), scroll propio, sombra profunda, cierre con Escape. La mano ya NO colapsa al abrir "Detalles" (verificado: altura estable).
+
+### Mesa protagonista
+- Cartas jugadas 48→60px (`TABLE_CARD_WIDTH` en GameBoard); agrupación por jugador: jugadas consecutivas del mismo dueño van en `.table-group` con chip de nombre debajo (`.table-group-owner`), solo si el screen pasa `playerNameById` (online; solitario sin chips). Pop-in con `@keyframes table-pop` respetando `prefers-reduced-motion`. Min-heights reajustados por breakpoint (108/76/64px) + `zoom` 0.78/0.68 en mobile para los grupos.
+
+### Tests web (34 total ahora)
+- `RivalsPanel.test.tsx` (chips, conexión, turno, aria, vacío) y `GameBoard.test.tsx` (shell, controles por fase/turno, Jester con/sin contador, error banner, agrupación mesa ±autoría). `src/test/setup.ts` agrega stub de `ResizeObserver` (jsdom no lo implementa). Los tests fuerzan `localStorage('regicide.lang','es')` en `beforeEach` (el headless/jsdom resuelve idioma 'en').
+
+### Verificación E2E V7 (CDP headless, scripts efímeros en /tmp/opencode)
+- Solo: tablero renderiza, drawer estable, Escape cierra, jugar carta crea grupo sin autoría.
+- Online 2 navegadores (2 perfiles Chrome + 2 usuarios Supabase admin-confirmados vía `/auth/v1/admin/users` porque **el server fusiona sockets del mismo usuario en un solo asiento**): sala 2/4, cada vista ve 1 rival con su contador, turno activo resaltado en el chip, jugada del host visible en el invitado con chip de autoría y decremento 7→6 del rival.
+
+
 ## Cómo verificar cambios
 
 - Tras tocar web: `pnpm --filter @regicide/web build` y probar contra el server local en :3001 (el server sirve el build). Para el flujo online: 2 pestañas en `http://localhost:3001/`.
