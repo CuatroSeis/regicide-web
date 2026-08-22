@@ -6,6 +6,7 @@ import type { BoardBanner } from '../components/GameBoard';
 import { GameBoard } from '../components/GameBoard';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { RivalsPanel } from '../components/RivalsPanel';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface OnlineGameScreenProps extends ScreenProps {
@@ -50,6 +51,17 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
     s.result === 'victory' ? (s.jestersUsed === 0 ? 'gold' : s.jestersUsed === 1 ? 'silver' : 'bronze') : null;
   const roomNameById = new Map((online.room?.players ?? []).map((p) => [p.id, p.name]));
   const currentName = roomNameById.get(s.players[s.currentPlayerIndex]!.id) ?? t('player');
+  const currentId = s.players[s.currentPlayerIndex]!.id;
+  const gamePlayerById = new Map(s.players.map((p) => [p.id, p]));
+  const rivals = (online.room?.players ?? [])
+    .filter((p) => p.id !== s.playerId && gamePlayerById.has(p.id))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      handCount: gamePlayerById.get(p.id)!.handCount,
+      connected: p.connected,
+      isCurrent: p.id === currentId,
+    }));
 
   const isMyTurnAndChoosing = s.isMyTurn && s.phase === 'choose_action';
   let banner: BoardBanner | null = null;
@@ -91,6 +103,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
       error={online.error}
       headerMeta={t('roomCodeX', { code: online.room?.code ?? '' })}
       onMenu={() => setConfirmLeave(true)}
+      headerRight={<RivalsPanel rivals={rivals} />}
       onToggleCard={online.toggle}
       onClearSelection={online.clearSelection}
       onPlay={online.play}

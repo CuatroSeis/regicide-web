@@ -395,6 +395,65 @@ body {
   justify-content: center;
 }
 
+/* Rivales humanos (online): chips compactos en el slot derecho del header.
+   Muestran nombre + cartas restantes + conexión; el turno activo se resalta. */
+.rivals {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.rival-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 9rem;
+  background: rgba(13, 20, 30, 0.7);
+  border: 1px solid var(--stone-edge);
+  border-radius: 999px;
+  padding: 0.22rem 0.7rem;
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
+  color: var(--muted);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.rival-chip--current {
+  border-color: var(--accent);
+  color: var(--ivory);
+  box-shadow:
+    0 0 10px var(--accent-glow),
+    inset 0 1px 0 rgba(228, 236, 245, 0.08);
+}
+
+.rival-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+.rival-count {
+  color: var(--accent);
+  font-size: 1.05em;
+}
+
+/* Conectado = verde tenue (mismo verde que .conn-on); apagado = gris azulado. */
+.rival-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(139, 151, 168, 0.45);
+  flex-shrink: 0;
+}
+
+.rival-dot.conn-on {
+  background: #79d6b2;
+  box-shadow: 0 0 6px rgba(121, 214, 178, 0.55);
+}
+
 .meta {
   font-size: 0.9rem;
   color: var(--muted);
@@ -1177,6 +1236,13 @@ body {
 
   .meta {
     display: none;
+  }
+
+  .rival-chip {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    gap: 0.3rem;
+    max-width: 6.5rem;
   }
 
   .back-button {

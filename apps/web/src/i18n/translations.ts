@@ -140,6 +140,7 @@ const es = {
   'turnOf': 'Turno de {name}',
   'waitYourTurn': 'Espera tu turno…',
   'jesterPickSubtitle': 'Elegí quién empieza el próximo turno [R-20]',
+  'rivalChipAria': '{name}: {cards} cartas en la mano, {status}',
 
   // ---- Panel del enemigo ----
   'life': 'Vida',
@@ -386,6 +387,7 @@ const en: Record<TranslationKey, string> = {
   turnOf: "Turn of {name}",
   waitYourTurn: 'Wait for your turn…',
   jesterPickSubtitle: 'Choose who starts the next turn [R-20]',
+  rivalChipAria: '{name}: {cards} cards in hand, {status}',
 
   life: 'Health',
   attack: 'Attack',
@@ -619,6 +621,7 @@ const pt: Record<TranslationKey, string> = {
   turnOf: 'Vez de {name}',
   waitYourTurn: 'Aguarde sua vez…',
   jesterPickSubtitle: 'Escolha quem começa o próximo turno [R-20]',
+  rivalChipAria: '{name}: {cards} cartas na mão, {status}',
 
   life: 'Vida',
   attack: 'Ataque',
