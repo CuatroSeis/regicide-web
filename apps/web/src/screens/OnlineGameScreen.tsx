@@ -104,6 +104,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
       headerMeta={t('roomCodeX', { code: online.room?.code ?? '' })}
       onMenu={() => setConfirmLeave(true)}
       headerRight={<RivalsPanel rivals={rivals} />}
+      playerNameById={Object.fromEntries(roomNameById)}
       onToggleCard={online.toggle}
       onClearSelection={online.clearSelection}
       onPlay={online.play}

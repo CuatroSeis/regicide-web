@@ -22,6 +22,9 @@ export interface BoardBanner {
   waiting?: boolean;
 }
 
+/** Ancho de las cartas jugadas en la mesa. */
+const TABLE_CARD_WIDTH = 60;
+
 interface GameBoardProps {
   phase: Phase;
   hand: readonly Card[];
@@ -54,6 +57,11 @@ interface GameBoardProps {
   onMenu: () => void;
   /** Slot derecho del header (panel de rivales en online). */
   headerRight?: ReactNode;
+  /**
+   * Nombres por id de jugador para atribuir las cartas de la mesa.
+   * Si no se pasa (solitario), los chips de autoría no se muestran.
+   */
+  playerNameById?: Record<string, string>;
 
   onToggleCard: (cardId: string) => void;
   onClearSelection: () => void;
@@ -95,6 +103,7 @@ export function GameBoard({
   headerMeta,
   onMenu,
   headerRight,
+  playerNameById,
   onToggleCard,
   onClearSelection,
   onPlay,
@@ -148,6 +157,17 @@ export function GameBoard({
     enemyRef,
   });
 
+  /** Cartas consecutivas del mismo jugador agrupadas (chip de autoría). */
+  const tableGroups = useMemo(() => {
+    const groups: { playerId: string; cards: Card[] }[] = [];
+    for (const played of table) {
+      const last = groups[groups.length - 1];
+      if (last && last.playerId === played.playerId) last.cards.push(played.card);
+      else groups.push({ playerId: played.playerId, cards: [played.card] });
+    }
+    return groups;
+  }, [table]);
+
   return (
     <div className="screen game-screen">
       {children}
@@ -188,9 +208,27 @@ export function GameBoard({
             {table.length === 0 ? (
               <span className="muted">{t('playEmptyHint')}</span>
             ) : (
-              table.map(({ card, playerId }) => (
-                <CardFace key={`${playerId}-${card.id}`} card={card} width={48} />
-              ))
+              tableGroups.map((group, index) => {
+                const owner =
+                  playerNameById?.[group.playerId] ?? (playerNameById ? t('player') : null);
+                return (
+                  <div
+                    key={`${group.playerId}-${index}`}
+                    className="table-group"
+                  >
+                    <div className="table-group-cards">
+                      {group.cards.map((card) => (
+                        <CardFace
+                          key={`${group.playerId}-${card.id}`}
+                          card={card}
+                          width={TABLE_CARD_WIDTH}
+                        />
+                      ))}
+                    </div>
+                    {owner && <span className="table-group-owner">{owner}</span>}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

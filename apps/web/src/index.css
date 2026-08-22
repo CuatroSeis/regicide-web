@@ -833,8 +833,8 @@ body {
 .table-cards {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  min-height: 84px;
+  gap: 0.5rem 1.1rem;
+  min-height: 108px;
   align-items: center;
   justify-content: center;
   background: linear-gradient(180deg, rgba(13, 20, 30, 0.3), rgba(6, 10, 16, 0.36));
@@ -850,6 +850,50 @@ body {
     100% 92%, 92% 96%, 84% 93%, 74% 97%, 64% 93%, 54% 97%, 44% 93%, 34% 97%, 24% 93%, 14% 97%, 6% 94%, 0% 96%
   );
   box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+/* Mesa protagonista: jugadas agrupadas por jugador con chip de autoría.
+   Las cartas suben a 60px (antes 48) y el grupo lleva el nombre abajo. */
+.table-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  animation: table-pop 0.28s ease-out both;
+}
+
+.table-group-cards {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.table-group-owner {
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@keyframes table-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-group {
+    animation: none;
+  }
 }
 
 .table-area {
@@ -1321,8 +1365,16 @@ body {
   }
 
   .table-cards {
-    min-height: 50px;
+    min-height: 76px;
     padding: 0.4rem;
+  }
+
+  .table-group {
+    zoom: 0.78;
+  }
+
+  .table-group-owner {
+    font-size: 0.62rem;
   }
 
   .step-banner-title {
@@ -1380,7 +1432,11 @@ body {
   }
 
   .table-cards {
-    min-height: 42px;
+    min-height: 64px;
+  }
+
+  .table-group {
+    zoom: 0.68;
   }
 }
 
