@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -17,6 +17,15 @@ export function StepBanner({ title, description, log = [], waiting = false }: St
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const hasDetails = Boolean(description) || log.length > 0;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
 
   return (
     <div className="step-banner" aria-live="polite">
