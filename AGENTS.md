@@ -185,6 +185,30 @@ Tablero unificado + rivales visibles + drawer de detalles + mesa protagonista (c
 - Solo: tablero renderiza, drawer estable, Escape cierra, jugar carta crea grupo sin autoría.
 - Online 2 navegadores (2 perfiles Chrome + 2 usuarios Supabase admin-confirmados vía `/auth/v1/admin/users` porque **el server fusiona sockets del mismo usuario en un solo asiento**): sala 2/4, cada vista ve 1 rival con su contador, turno activo resaltado en el chip, jugada del host visible en el invitado con chip de autoría y decremento 7→6 del rival.
 
+## V8 (hecho)
+
+Avatares game-icons + chrome Kenney (assets fuente en `assets dark fantasy/`, gitignored; análisis/bake programático con Pillow).
+
+### Avatares de perfil: 29 íconos reemplazan a las 5 cartas
+- Fuente: pack `medieval-fantasy.svg W` de game-icons.net (**CC-BY 3.0**, autores Lorc/Delapouite/Carl Olsen/Cathelineau/Kier Heyl/Skoll). SVGs blancos monocromo viewBox 512, fondo transparente. Copiados aplanando carpetas de autor → `apps/web/public/avatars/<nombre>.svg`.
+- `AvatarCard.tsx`: nuevo union type `AvatarId` (29 ids kebab-case) + `AVATAR_IDS` + mapa `AVATAR_LABEL_KEY` → claves i18n `avatar*`; render `<img src="/avatars/x.svg">` (antes `<use>` del sprite de cartas). API `size/selected/onClick` intacta; aria-labels localizados vía `useLanguage()`.
+- `AuthContext.avatarId()`: valida contra `AVATAR_IDS`, fallback **`'cowled'`** (encapuchado) para metadata vieja (`jack/queen/king/joker/ace`). No hay migración de datos.
+- `cardAssets.ts`: eliminados `AVATAR_ART`/`AvatarArt` (el sprite sigue siendo solo cartas).
+- i18n: 29 claves `avatar<Nombre>` × es/en/pt en `translations.ts` (nombres temáticos, no literales).
+- Créditos CC-BY en README §Créditos.
+
+### Chrome Kenney "Fantasy UI Borders" (CC0)
+- **Técnica**: PNGs blancos de Kenney teñidos con PIL (multiplicar por color, alpha preservado) → `apps/web/public/ui/*.png`; aplicados como `border-image` nativo (9-slice, sin distorsión de esquinas). **Incompatible con `clip-path`** (se quitó el chamfer de `.menu-button`) **y con `border-radius`** (pills `.back-button/.deck-chip/.rival-chip/.lang-switcher` ahora son placas cuadradas).
+- Slices medidos por estructura alfa (adorno de esquina ~20px Double / ~12px Default): btn/panel slice **24**, chip slice **14**. Dos tintes por marco: piedra `#7d8a9e` (normal) e hielo `#9fc4e8` (hover/current); el swap se hace con `border-image-source` en `:hover`/`.rival-chip--current`.
+- Elección de diseño (contact sheet programática): **Double 011** botones · **Double 028** paneles grandes · **Default 002** chips/menores; `divider-000` para `.divider` (hr → imagen centrada).
+- Clases tocadas en `index.css`: `.menu-button` (border 14px), `.rules-panel`/`.overlay-card`/`.step-banner-body` (reemplaza `--frame-ruin`, border 18px), `.back-button` (7px), `.deck-chip`/`.rival-chip` (5px), `.lang-switcher` (contenedor placa 6px), `.divider`. `--frame-ruin` queda definido pero sin uso. `background-clip: padding-box` para que la textura piedra no se meta bajo el marco.
+- Sin tocar: skin gótico del tablero (`clip-path` de enemy-panel/table-cards/hand-area), health bar, inputs, breakpoints responsive.
+
+### Verificación V8
+- typecheck/lint ×3 paquetes, build web OK, tests web 34/34.
+- CDP headless (`/tmp/opencode/cdp_v8.js`, sesión inyectada en localStorage antes de load): home autenticado con badge-avatar `<img>` ✓; perfil con **29 botones**, 1 `aria-pressed`, 0 imgs rotas, labels en locale del browser, 2 dividers ✓; flujo solo completo (setup→tablero→jugar carta) ✓. Screenshots validados por muestreo de píxeles (tintes stone/ice presentes en las 3 vistas).
+
+
 
 ## Cómo verificar cambios
 
