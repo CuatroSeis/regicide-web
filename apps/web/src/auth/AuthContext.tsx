@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { AvatarId } from '../components/AvatarCard';
+import { AVATAR_IDS, type AvatarId } from '../components/AvatarCard';
 
 interface AuthState {
   /** Usuario autenticado (null si no hay sesión). */
@@ -116,13 +116,13 @@ export function displayName(user: User | null): string {
   return (user.user_metadata?.display_name as string) || user.email || 'Jugador';
 }
 
-/** Avatar del usuario: avatar_id del user_metadata. */
+/** Avatar del usuario: avatar_id del user_metadata (ids de game-icons). */
 export function avatarId(user: User | null): AvatarId {
   const raw = user?.user_metadata?.avatar_id;
-  if (raw === 'jack' || raw === 'queen' || raw === 'king' || raw === 'joker' || raw === 'ace') {
-    return raw;
+  if (typeof raw === 'string' && (AVATAR_IDS as readonly string[]).includes(raw)) {
+    return raw as AvatarId;
   }
-  return 'king';
+  return 'cowled';
 }
 
 /** Access token JWT (para enviarlo al server). */
