@@ -246,6 +246,11 @@ estándar:
   Reglas: https://www.regicidegame.com/
 - **SVG-cards** — htdebeer/SVG-cards v4.0.2 (LGPL-2.1), autor original David
   Bellot. https://github.com/htdebeer/SVG-cards
+- **Íconos de avatar** — [game-icons.net](https://game-icons.net/) (CC-BY 3.0),
+  autores: Lorc, Delapouite, Carl Olsen, Cathelineau, Kier Heyl y Skoll.
+  Recortes del pack "medieval-fantasy" en variante blanca.
+- **Marcos de UI** — [Kenney](https://www.kenney.nl) "Fantasy UI Borders"
+  (CC0), teñidos programáticamente a la paleta del tema.
 - **Autor del proyecto** — [CuatroSeis](https://github.com/CuatroSeis)
 
 ---

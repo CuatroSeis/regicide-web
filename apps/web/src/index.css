@@ -103,8 +103,10 @@ body {
   gap: 0.35rem;
   padding: 0.25rem;
   background: rgba(13, 20, 30, 0.6);
-  border: 1px solid var(--stone-edge);
-  border-radius: 999px;
+  background-clip: padding-box;
+  border: 6px solid transparent;
+  border-image: url('/ui/chip-frame-stone.png') 14 stretch;
+  border-radius: 0;
 }
 
 .lang-button {
@@ -114,7 +116,7 @@ body {
   color: var(--muted);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.3rem 0.8rem;
   cursor: pointer;
   transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
@@ -130,6 +132,11 @@ body {
   border-color: rgba(159, 196, 232, 0.5);
 }
 
+/*
+ * Marcos "fantasy UI borders" de Kenney (CC0), teñidos con PIL a la paleta
+ * fría: piedra (#7d8a9e) normal / hielo (#9fc4e8) para hover y estados
+ * activos. Slice 24 (btn/panel) y 14 (chip): cubren el adorno de esquina.
+ */
 .menu-button {
   font-family: inherit;
   font-size: 1.15rem;
@@ -141,23 +148,22 @@ body {
     linear-gradient(180deg, rgba(159, 196, 232, 0.1), rgba(2, 4, 8, 0.5)),
     var(--panel-bg);
   background-size: 120px 120px, 64px 32px, auto, auto;
-  border: 1px solid var(--stone-edge);
+  background-clip: padding-box;
+  border: 14px solid transparent;
+  border-image: url('/ui/btn-frame-stone.png') 24 stretch;
   border-radius: 0;
-  padding: 0.9rem 1.5rem;
+  padding: 0.7rem 1rem;
   cursor: pointer;
-  /* Placa de piedra remachada: esquinas superiores en chaflán (punto 6). */
-  clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px);
   box-shadow:
     inset 0 1px 0 rgba(228, 236, 245, 0.1),
     inset 0 -5px 12px rgba(0, 0, 0, 0.5);
   transition:
-    border-color 0.2s ease,
     color 0.2s ease,
     transform 0.15s ease;
 }
 
 .menu-button:hover:not(:disabled) {
-  border-color: var(--accent);
+  border-image-source: url('/ui/btn-frame-ice.png');
   color: var(--accent);
   transform: translateY(-2px);
 }
@@ -224,18 +230,20 @@ body {
   font-size: 0.95rem;
   color: var(--ivory);
   background: rgba(13, 20, 30, 0.6);
-  border: 1px solid var(--stone-edge);
-  border-radius: 999px;
-  padding: 0.5rem 1.25rem;
+  background-clip: padding-box;
+  border: 7px solid transparent;
+  border-image: url('/ui/chip-frame-stone.png') 14 stretch;
+  border-radius: 0;
+  padding: 0.45rem 1rem;
   cursor: pointer;
   box-shadow:
     inset 0 1px 0 rgba(228, 236, 245, 0.08),
     inset 0 -3px 8px rgba(0, 0, 0, 0.4);
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease;
 }
 
 .back-button:hover {
-  border-color: var(--accent);
+  border-image-source: url('/ui/chip-frame-ice.png');
   color: var(--accent);
 }
 
@@ -247,8 +255,8 @@ body {
     var(--tex-block),
     linear-gradient(180deg, rgba(20, 29, 43, 0.9), var(--felt-dark));
   background-size: 64px 32px, auto;
-  border: 14px solid transparent;
-  border-image: var(--frame-ruin) 14 round;
+  border: 18px solid transparent;
+  border-image: url('/ui/panel-frame-stone.png') 24 stretch;
   border-radius: 0;
   padding: 1.6rem;
   line-height: 1.65;
@@ -374,9 +382,11 @@ body {
   align-items: center;
   gap: 0.35rem;
   background: rgba(13, 20, 30, 0.7);
-  border: 1px solid var(--stone-edge);
-  border-radius: 999px;
-  padding: 0.32rem 1rem;
+  background-clip: padding-box;
+  border: 5px solid transparent;
+  border-image: url('/ui/chip-frame-stone.png') 14 stretch;
+  border-radius: 0;
+  padding: 0.32rem 0.8rem;
   font-size: clamp(0.9rem, 2.2vw, 1.05rem);
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -412,16 +422,18 @@ body {
   gap: 0.4rem;
   max-width: 9rem;
   background: rgba(13, 20, 30, 0.7);
-  border: 1px solid var(--stone-edge);
-  border-radius: 999px;
-  padding: 0.22rem 0.7rem;
+  background-clip: padding-box;
+  border: 5px solid transparent;
+  border-image: url('/ui/chip-frame-stone.png') 14 stretch;
+  border-radius: 0;
+  padding: 0.22rem 0.55rem;
   font-size: clamp(0.8rem, 2vw, 0.95rem);
   color: var(--muted);
   transition: border-color 0.25s, box-shadow 0.25s;
 }
 
 .rival-chip--current {
-  border-color: var(--accent);
+  border-image-source: url('/ui/chip-frame-ice.png');
   color: var(--ivory);
   box-shadow:
     0 0 10px var(--accent-glow),
@@ -1000,8 +1012,8 @@ body {
     var(--tex-block),
     linear-gradient(180deg, rgba(20, 29, 43, 0.97), rgba(10, 16, 26, 0.99));
   background-size: 64px 32px, auto;
-  border: 14px solid transparent;
-  border-image: var(--frame-ruin) 14 round;
+  border: 18px solid transparent;
+  border-image: url('/ui/panel-frame-stone.png') 24 stretch;
   border-radius: 0;
   padding: 0.7rem 1rem;
   overflow-y: auto;
@@ -1083,8 +1095,8 @@ body {
     var(--tex-block),
     linear-gradient(180deg, var(--felt), var(--felt-dark));
   background-size: 64px 32px, auto;
-  border: 14px solid transparent;
-  border-image: var(--frame-ruin) 14 round;
+  border: 18px solid transparent;
+  border-image: url('/ui/panel-frame-stone.png') 24 stretch;
   border-radius: 0;
   padding: 1.9rem 2.3rem;
   text-align: center;
@@ -1552,6 +1564,7 @@ body {
   transition: border-color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
 }
+.avatar-card img,
 .avatar-card svg {
   display: block;
 }
@@ -1576,8 +1589,10 @@ body {
 }
 .divider {
   border: none;
-  border-top: 1px solid var(--stone-edge);
+  height: 12px;
   margin: 1rem 0;
+  background: url('/ui/divider-stone.png') center / contain no-repeat;
+  opacity: 0.8;
 }
 .avatar-row {
   display: flex;
