@@ -208,6 +208,32 @@ Avatares game-icons + chrome Kenney (assets fuente en `assets dark fantasy/`, gi
 - typecheck/lint ×3 paquetes, build web OK, tests web 34/34.
 - CDP headless (`/tmp/opencode/cdp_v8.js`, sesión inyectada en localStorage antes de load): home autenticado con badge-avatar `<img>` ✓; perfil con **29 botones**, 1 `aria-pressed`, 0 imgs rotas, labels en locale del browser, 2 dividers ✓; flujo solo completo (setup→tablero→jugar carta) ✓. Screenshots validados por muestreo de píxeles (tintes stone/ice presentes en las 3 vistas).
 
+## V9 (hecho)
+
+"Kenney total": eliminación del skin gótico V4.2 y unificación de TODA la UI bajo el sistema de placas Kenney + texturas piedra existentes (solo `index.css`, sin cambios de componentes).
+
+### Skin gótico fuera
+- `.enemy-panel`: sin arco ojival (`clip-path`), sin almenas/grieta (`::before`/`::after`) ni `--tex-ashlar-frame` → marco `panel-frame-stone` (slice 24, border 16px) con el mismo interior `--tex-stone`+`--tex-block`+gradiente y drop-shadow.
+- `.enemy-card-wrap`: ventana gótica y mainullones eliminadas → placa directa `chip-frame-stone` (border 8px) sobre fondo piedra oscuro; padding simétrico 16/18.
+- `.table-cards`: portón en ruinas fuera (clip-path+ashlar+outline dashed) → marco `chip-frame-stone`.
+- `.hand-area`: escalón roto y grieta fuera → piso plano con gradiente sutil (la niebla sigue en `.game-screen::after`).
+- `.game-header::after`: almenas fuera. **Intacto**: atmósfera completa (glow frío/viñeta/grano/niebla), cartas, CardFan.
+
+### Unificación menor
+- Pills → mini-placas `chip-frame`: `.user-badge`, `.card-pile-count`, `.step-banner-toggle` (hover con tinte hielo), health bar (enmarcada, fill cuadrado, umbrales intactos). `.badge` de daño solo pierde el radius.
+- Esquinas rectas sin marco: inputs, `.auth-tab` (fuera los radius laterales), `.lobby-list li`, `.avatar-card`, `.error-banner`, filas mobile del leaderboard. `.rival-dot` conserva `50%` (indicador).
+- Única fuente de verdad: `--img-btn/chip/panel-frame-{stone,ice}` + `--img-divider-stone` en `:root`; todas las reglas usan `var()`. **Lección**: el replace masivo url→var convirtió las definiciones en auto-referencias cíclicas (`--x: var(--x)` → inválido, todos los marcos a `none`); detectado vía computed style `border-image-source: none` en CDP.
+
+### Tokens muertos eliminados
+`--frame-ruin`, `--tex-battlement`, `--tex-crack`, `--tex-ashlar-frame`. Quedan: grain/block/stone + paleta. Solo queda un `border-radius` no-cero en la app (`.rival-dot` 50%).
+
+### Fix responsive: cajón hacia arriba en pantallas bajas
+El enemy-panel creció ~30px con el marco nuevo y el drawer del StepBanner (ancla bajo el head) pasaba por encima de los controles a 713px (`elementFromPoint` 0/3 hits). Fix: en `max-height:760px` (y combo ≤640w+≤720h) `.step-banner-body` abre **hacia arriba** (`bottom: calc(100% + .5rem)`, max-height 38dvh) sobre la mesa — no interactiva — dejando mano y controles libres. Verificado: banner abierto 3/3 hits + Escape cierra.
+
+### Verificación V9
+- build OK, tests web 34/34, typecheck/lint ×3.
+- CDP: home/perfil (29 avatares)/tablero jugando carta/reglas con frame Kenney/responsive 1280×713 con banner abierto (controles 3/3, Escape ✓). Píxeles: tintes stone/ice en las 5 vistas; fondo lateral del panel enemigo frío (máx R−B = 0 excluyendo el arte de la carta).
+
 
 
 ## Cómo verificar cambios
