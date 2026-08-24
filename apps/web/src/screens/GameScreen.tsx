@@ -73,6 +73,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
       selectedIds={game.selected}
       isMyTurn
       canPlay={game.canPlay}
+      canDiscard={game.canDiscard}
       canYieldNow={s.phase === 'choose_action' && canYield(s)}
       showJester={
         s.jestersLeft > 0 && (s.phase === 'choose_action' || s.phase === 'suffer_damage')

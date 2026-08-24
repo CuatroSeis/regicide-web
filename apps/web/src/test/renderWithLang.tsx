@@ -3,11 +3,16 @@ import type { ReactElement, ReactNode } from 'react';
 import { AuthProvider } from '../auth/AuthContext';
 import { LanguageProvider } from '../i18n/LanguageContext';
 
-/** Renderiza dentro de <AuthProvider> + <LanguageProvider>. */
-export function renderWithLang(ui: ReactElement) {
-  return render(
+/** Envuelve un elemento en <AuthProvider> + <LanguageProvider>. */
+export function withLang(ui: ReactElement): ReactNode {
+  return (
     <AuthProvider>
       <LanguageProvider>{ui as ReactNode}</LanguageProvider>
-    </AuthProvider>,
+    </AuthProvider>
   );
+}
+
+/** Renderiza dentro de <AuthProvider> + <LanguageProvider>. */
+export function renderWithLang(ui: ReactElement) {
+  return render(withLang(ui));
 }

@@ -249,7 +249,7 @@ export function useOnlineGame(): OnlineSessionResult {
   const canDiscard = useMemo(
     () =>
       Boolean(
-        state && state.isMyTurn && state.phase === 'suffer_damage' && selectionValue > 0 &&
+        state && state.isMyTurn && state.phase === 'suffer_damage' &&
           selectionValue >= effectiveAttack(state.enemy),
       ),
     [state, selectionValue],

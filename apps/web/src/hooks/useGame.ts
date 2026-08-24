@@ -61,7 +61,10 @@ export function useGame(initialSeed?: number): UseGameResult {
   }, [run, selected]);
 
   const yieldTurn = useCallback(() => {
-    run(() => gameRef.current!.yield());
+    run(() => {
+      gameRef.current!.yield();
+      setSelected([]);
+    });
   }, [run]);
 
   const discard = useCallback(() => {

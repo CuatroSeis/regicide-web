@@ -45,6 +45,8 @@ interface GameBoardProps {
   /** Solo: siempre true. Online: lo decide el server. */
   isMyTurn: boolean;
   canPlay: boolean;
+  /** Selección cubre el daño del paso 4 (habilita "Cubrir daño" y el drop defensivo). */
+  canDiscard?: boolean;
   canYieldNow: boolean;
   showJester: boolean;
   /** Contador "(N)" junto al botón Jester (solo). */
@@ -95,6 +97,7 @@ export function GameBoard({
   selectedIds,
   isMyTurn,
   canPlay,
+  canDiscard = false,
   canYieldNow,
   showJester,
   jesterCount,
@@ -157,11 +160,14 @@ export function GameBoard({
   };
 
   const { drag, onCardPointerDown } = useCardDrag({
-    enabled: isMyTurn && phase === 'choose_action',
+    enabled: isMyTurn && (phase === 'choose_action' || isSuffering),
+    mode: isSuffering ? 'defend' : 'attack',
     selectedIds,
     canPlay,
+    canDiscard,
     toggle: onToggleCard,
     play: onPlay,
+    discard: onDiscard,
     tableRef,
     enemyRef,
   });
@@ -219,7 +225,9 @@ export function GameBoard({
         <div className="table-area">
           <span className="zone-label">{t('table')}</span>
           <div
-            className={drag?.overTable ? 'table-cards drag-over' : 'table-cards'}
+            className={
+              drag?.overTable && !isSuffering ? 'table-cards drag-over' : 'table-cards'
+            }
             ref={tableRef}
           >
             {table.length === 0 ? (
@@ -289,7 +297,12 @@ export function GameBoard({
             </>
           )}
           {isSuffering && isMyTurn && (
-            <button type="button" className="menu-button" onClick={onDiscard}>
+            <button
+              type="button"
+              className="menu-button"
+              disabled={!canDiscard}
+              onClick={onDiscard}
+            >
               {t('coverDamage')}
             </button>
           )}

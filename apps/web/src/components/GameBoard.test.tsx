@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card, Enemy, PlayedCard } from '@regicide/engine';
-import { renderWithLang } from '../test/renderWithLang';
+import { renderWithLang, withLang } from '../test/renderWithLang';
 import { GameBoard } from './GameBoard';
 
 const card = (id: string): Card => ({ id, kind: 'number', rank: 5, suit: 'hearts' });
@@ -42,6 +42,7 @@ function baseProps() {
     canPlay: true,
     canYieldNow: true,
     showJester: false,
+    canDiscard: false,
     headerMeta: 'Sala ABCD',
     onMenu: vi.fn(),
     onToggleCard: vi.fn(),
@@ -102,8 +103,26 @@ describe('GameBoard', () => {
     expect(screen.queryByText(/Detalles/)).not.toBeInTheDocument();
   });
 
-  it('el botón Registro abre el overlay con el log y Escape lo cierra', async () => {
+  it('en defensa, "Cubrir daño" queda deshabilitado hasta que la selección cubre el daño', async () => {
     const user = userEvent.setup();
+    const onDiscard = vi.fn();
+    const { rerender } = renderWithLang(
+      <GameBoard {...baseProps()} phase="suffer_damage" canDiscard={false} onDiscard={onDiscard} />,
+    );
+    const btn = screen.getByRole('button', { name: 'Cubrir daño' });
+    expect(btn).toBeDisabled();
+    await user.click(btn);
+    expect(onDiscard).not.toHaveBeenCalled();
+
+    rerender(withLang(
+      <GameBoard {...baseProps()} phase="suffer_damage" canDiscard onDiscard={onDiscard} />,
+    ));
+    expect(screen.getByRole('button', { name: 'Cubrir daño' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Cubrir daño' }));
+    expect(onDiscard).toHaveBeenCalledTimes(1);
+  });
+
+  it('el botón Registro abre el overlay con el log y Escape lo cierra', async () => {    const user = userEvent.setup();
     renderWithLang(
       <GameBoard
         {...baseProps()}

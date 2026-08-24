@@ -97,6 +97,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
       selectedIds={online.selected}
       isMyTurn={s.isMyTurn}
       canPlay={online.canPlay}
+      canDiscard={online.canDiscard}
       canYieldNow={canYieldNow}
       showJester={online.canPlayJester}
       error={online.error}

@@ -4,6 +4,8 @@ import type { RefObject } from 'react';
 /** Umbral de arrastre: a partir de este movimiento el gesto se considera drag. */
 const DRAG_THRESHOLD = 6;
 
+export type CardDragMode = 'attack' | 'defend';
+
 export interface CardDragState {
   /** IDs de las cartas arrastradas (la selección, o la carta tocada). */
   ids: string[];
@@ -15,10 +17,18 @@ export interface CardDragState {
 
 interface UseCardDragOptions {
   enabled: boolean;
+  /**
+   * attack: soltar sobre mesa/enemigo juega (paso 1).
+   * defend: soltar en cualquier lado descarta la selección para cubrir daño
+   *         (paso 4), solo si `canDiscard`.
+   */
+  mode?: CardDragMode;
   selectedIds: string[];
   canPlay: boolean;
+  canDiscard?: boolean;
   toggle: (cardId: string) => void;
   play: () => void;
+  discard?: () => void;
   tableRef: RefObject<HTMLDivElement | null>;
   enemyRef: RefObject<HTMLDivElement | null>;
 }
@@ -30,9 +40,10 @@ function isOver(el: Element | null, x: number, y: number): boolean {
 }
 
 /**
- * Arrastre para jugar cartas: al arrastrar la selección (o una carta suelta)
- * sobre la mesa o el enemigo se dispara `play()`. La selección por clic y el
- * botón "Jugar" siguen funcionando como fallback.
+ * Arrastre de cartas según fase: al atacar, soltar la selección sobre la mesa
+ * o el enemigo dispara `play()`; al defender (paso 4), soltarlas en cualquier
+ * lugar dispara `discard()` si la selección cubre el daño. La selección por
+ * clic y los botones siguen funcionando como fallback.
  */
 export function useCardDrag(options: UseCardDragOptions) {
   const optsRef = useRef(options);
@@ -80,9 +91,12 @@ export function useCardDrag(options: UseCardDragOptions) {
     const onUp = () => {
       const dragState = dragRef.current;
       if (dragState) {
-        const { canPlay, play } = optsRef.current;
-        if (canPlay && (dragState.overTable || dragState.overEnemy)) {
-          play();
+        const opts = optsRef.current;
+        if (opts.mode === 'defend') {
+          // Soltar las cartas en cualquier lado = tirarlas para cubrir daño.
+          if (opts.canDiscard && opts.discard) opts.discard();
+        } else if (opts.canPlay && (dragState.overTable || dragState.overEnemy)) {
+          opts.play();
         }
       }
       pendingRef.current = null;
