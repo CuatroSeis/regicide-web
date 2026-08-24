@@ -52,7 +52,7 @@ export function HomeScreen({ onNavigate }: ScreenProps) {
 
       <CardFan cards={fanCards} />
 
-      <ul className="menu">
+      <ul className="home-menu">
         {MENU_OPTIONS.map((option) => (
           <li key={option.id} style={{ listStyle: 'none' }}>
             <button
