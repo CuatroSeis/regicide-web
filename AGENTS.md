@@ -284,6 +284,29 @@ Texturas Kenney reales ("retro-textures-fantasy", CC0) reemplazan a los SVG embe
 - CDP geo intacto vs V10 (las texturas no movieron layout): hits 3/3 en 813/713/844.
 - Píxeles: fondo sd 25-35 frío (R−B −12..−14), panel enemigo sd 7-28 frío, mesa cálida (+2/+3), piso mano lum 38-39 cálido (+14), overlay registro piedra fría.
 
+## V12 (hecho)
+
+Bug "se puede atacar pero no defenderse": tres asimetrías entre el flujo de ataque (paso 1) y el de defensa (paso 4), arregladas juntas.
+
+### Causas encontradas
+1. **Drag exclusivo del ataque**: `useCardDrag` se habilitaba solo en `choose_action` y su drop solo conocía `play()`. Arrastrar cartas en defensa no hacía nada.
+2. **`canDiscard` era código muerto**: los hooks lo calculaban pero `GameBoardProps` no lo recibía; el botón "Cubrir daño" nunca se deshabilitaba. Como el engine mata sin error si el valor no alcanza (`discardToSurvive`, R-19), un clic de más = derrota silenciosa.
+3. En solo, `yieldTurn` no limpiaba la selección: la selección del ataque sobrevivía al paso 4.
+
+### Fix
+- `useCardDrag`: nuevo `mode: 'attack' | 'defend'`. En defend, soltar las cartas en cualquier lado dispara `discard()` SOLO si `canDiscard` (si falta valor, quedan seleccionadas — feedback por el hint). `GameBoard` habilita drag en ambas fases.
+- Prop nueva `canDiscard?: boolean` en `GameBoard`; botón "Cubrir daño" con `disabled={!canDiscard}` (imposible suicidarse por clic accidental). Screens lo pasan (`game.canDiscard` / `online.canDiscard`).
+- `canDiscard` online alineado con solo: fuera el guard `selectionValue > 0` para que ataque efectivo 0 habilite el botón vacío (R-19 pasa turno sin descartar).
+- Solo: `yieldTurn` ahora limpia selección como `play`.
+
+### Tests web (40 total)
+- Nuevo `useCardDrag.test.tsx` (3): attack sin zona bajo puntero no juega · defend descarta si canDiscard · defend NO descarta si falta cobertura. Ojo: el pointerdown va directo vía `result.current.onCardPointerDown(...)` — el listener de window solo escucha move/up/cancel.
+- GameBoard: "Cubrir daño" disabled/enabled según `canDiscard` (rerender necesita `withLang(ui)` del helper, no elemento crudo).
+
+### Verificación V12
+- tests 40/40, typecheck/lint ×3, build OK.
+- CDP E2E (`/tmp/opencode/cdp_defend.js`): yield → fase suffer con botón deshabilitado y hint "(0 selected)" → 3 clics en cartas → habilitado → Cubrir daño → vuelve a choose_action sin game over.
+
 
 
 ## Cómo verificar cambios
