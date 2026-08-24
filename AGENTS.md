@@ -261,6 +261,29 @@ El enemy-panel creció ~30px con el marco nuevo y el drawer del StepBanner (ancl
 - CDP headless (`/tmp/opencode/cdp_v10b.js`, login UI real: submit = botón **"Sign in"**, no el tab "Log in"): geo en 1280×813 / 1280×713 / 390×844 — controls bottom ≤ vh−8, hits 3/3, hint visible, overlay Registro abre/cierra con Escape. Píxeles: tintes stone/ice presentes en tablero y overlay (desktop+mobile).
 - Usuario de prueba CDP: `v10-tester@test.regicide.local` / `v10-pass-123` (creado vía admin API).
 
+## V11 (hecho)
+
+Texturas Kenney reales ("retro-textures-fantasy", CC0) reemplazan a los SVG embebidos + paleta vira a piedra fría derivada de las texturas horneadas.
+
+### Horneado (`/tmp/opencode/bake_kenney_tex.py` → `apps/web/public/ui/tex/`)
+- Curva de multiplicación hasta luminancia objetivo + empuje frío `(R×0.97, B×1.05)` en piedras; maderas se dejan cálidas. Fuente P-mode → convertir RGBA primero.
+- `tex-bg` floor_stone_pattern_depth lum 26 · `tex-panel` wall_stone 46 · `tex-brick` wall_brick_small_stone 42 · `tex-plaque` floor_stone 40 · `tex-table` door_wood 36 · `tex-hand` floor_wood_planks_wide **46** (rehorneada más clara: la primera pasada a 31 quedaba invisible bajo el velo).
+
+### CSS
+- Tokens `--img-tex-{bg,panel,brick,plaque,table,hand}`; fuera `--tex-stone`/`--tex-block` (queda `--tex-grain`). `background-size` ×2–×3 del PNG nativo (128–192px).
+- Superficies: fondo del tablero = baldosas · `.enemy-panel` = ladrillo · `.menu-button`/`.overlay-card`/`.rules-panel` = wall_stone · `.enemy-card-wrap` = placa lisa · `.table-cards` = madera oscura · `.hand-area` = piso de madera con gradiente INVERTIDO (claro arriba donde el ojo ve la franja libre, oscuro abajo bajo las cartas).
+- `.table-cards.drag-over` ya no pisa el `background` (mataba la madera): resplandor vía `::after` con `position:relative` en la base.
+- Paleta derivada de las texturas horneadas: `--felt #16181e`, `--felt-dark #0e1014`, `--panel-bg rgba(28,31,38,.86)`, `--bg #07080b`. Acento hielo/marcos/viñeta/grano intactos.
+
+### Lecciones V11
+- El desvío local (sd) NO detecta patrones grandes: el piso de madera "plano" (sd 3) en realidad se veía perfecto (lum 39 vs fondo 16, ranura entre tablones visible en el perfil por filas). Validar con luminancia media + perfil, no solo sd.
+- Los velos oscuros encima de una textura horneada oscura matan el patrón: las opacidades de gradiente deben quedar ≤0.45 en zonas visibles.
+
+### Verificación V11
+- build OK, tests 36/36, typecheck/lint ×3.
+- CDP geo intacto vs V10 (las texturas no movieron layout): hits 3/3 en 813/713/844.
+- Píxeles: fondo sd 25-35 frío (R−B −12..−14), panel enemigo sd 7-28 frío, mesa cálida (+2/+3), piso mano lum 38-39 cálido (+14), overlay registro piedra fría.
+
 
 
 ## Cómo verificar cambios
