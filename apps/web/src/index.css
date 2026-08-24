@@ -1,22 +1,28 @@
 :root {
-  --bg: #06090f;
-  --bg-deep: #030509;
-  --felt: #141d2b;
-  --felt-dark: #0d1420;
+  /* Paleta piedra fría V11 (derivada de las texturas Kenney horneadas). */
+  --bg: #07080b;
+  --bg-deep: #040507;
+  --felt: #16181e;
+  --felt-dark: #0e1014;
   --accent: #9fc4e8;
   --ivory: #e4ecf5;
   --muted: #9ba8b8;
   --accent-glow: rgba(159, 196, 232, 0.25);
-  /* Vela (único acento cálido, family #dca26c/#f3d19c de las refs). */
   --vignette: rgba(1, 3, 6, 0.55);
-  --panel-bg: rgba(13, 20, 30, 0.82);
+  --panel-bg: rgba(28, 31, 38, 0.86);
   --stone-edge: rgba(159, 196, 232, 0.3);
 
   /* Texturas SVG embebidas (sin assets externos). */
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.14 0 0 0 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tex-block: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='32' viewBox='0 0 64 32'%3E%3Cpath d='M0 .5h64M0 16.5h64' stroke='rgba%28159,196,232,0.16%29' stroke-width='1' fill='none'/%3E%3Cpath d='M16 .5v16M48 .5v16M0 16.5v16M32 16.5v16' stroke='rgba%28159,196,232,0.12%29' stroke-width='1' fill='none'/%3E%3C/svg%3E");
-  /* Relieve de piedra: ruido grueso a alpha bajo (skin gótico, punto 3). */
-  --tex-stone: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.32' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0 0 0 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23s)'/%3E%3C/svg%3E");
+
+  /* Texturas Kenney "retro-textures-fantasy" (CC0), horneadas oscuras:
+     piedra fría para paneles/fondo, madera cálida para mesa y mano. */
+  --img-tex-bg: url("/ui/tex/tex-bg.png");
+  --img-tex-panel: url("/ui/tex/tex-panel.png");
+  --img-tex-brick: url("/ui/tex/tex-brick.png");
+  --img-tex-plaque: url("/ui/tex/tex-plaque.png");
+  --img-tex-table: url("/ui/tex/tex-table.png");
+  --img-tex-hand: url("/ui/tex/tex-hand.png");
 
   /*
    * Marcos "fantasy UI borders" de Kenney (CC0), teñidos a la paleta fría.
@@ -149,11 +155,10 @@ body {
   letter-spacing: 0.06em;
   color: var(--ivory);
   background:
-    var(--tex-stone),
-    var(--tex-block),
+    var(--img-tex-panel),
     linear-gradient(180deg, rgba(159, 196, 232, 0.1), rgba(2, 4, 8, 0.5)),
     var(--panel-bg);
-  background-size: 120px 120px, 64px 32px, auto, auto;
+  background-size: 128px 128px, auto, auto;
   background-clip: padding-box;
   border: 14px solid transparent;
   border-image: var(--img-btn-frame-stone) 24 stretch;
@@ -260,9 +265,9 @@ body {
   width: min(92vw, 42rem);
   text-align: left;
   background:
-    var(--tex-block),
-    linear-gradient(180deg, rgba(20, 29, 43, 0.9), var(--felt-dark));
-  background-size: 64px 32px, auto;
+    var(--img-tex-panel),
+    linear-gradient(180deg, rgba(16, 18, 23, 0.55), var(--felt-dark));
+  background-size: 128px 128px, auto;
   border: 18px solid transparent;
   border-image: var(--img-panel-frame-stone) 24 stretch;
   border-radius: 0;
@@ -299,6 +304,11 @@ body {
   height: 100dvh;
   overflow: hidden;
   padding: 0.7rem 1.25rem;
+  /* Piso del castillo: baldosas de piedra fría bajo toda la escena. */
+  background:
+    linear-gradient(180deg, rgba(4, 5, 8, 0.28), rgba(2, 3, 5, 0.42)),
+    var(--img-tex-bg);
+  background-size: auto, 192px 192px;
 }
 
 /* Wrapper interno que recibe el zoom responsive. El `overflow: hidden`
@@ -474,11 +484,10 @@ body {
   align-items: center;
   gap: 0.55rem;
   background:
-    var(--tex-stone),
-    var(--tex-block),
+    var(--img-tex-brick),
     linear-gradient(180deg, rgba(159, 196, 232, 0.05), rgba(2, 4, 8, 0.4)),
     var(--panel-bg);
-  background-size: 120px 120px, 64px 32px, auto, auto;
+  background-size: 128px 128px, auto, auto;
   background-clip: padding-box;
   border: 16px solid transparent;
   border-image: var(--img-panel-frame-stone) 24 stretch;
@@ -573,9 +582,9 @@ body {
   justify-content: center;
   padding: 16px 18px;
   background:
-    var(--tex-stone),
-    linear-gradient(180deg, rgba(18, 26, 38, 0.9), rgba(6, 10, 16, 0.95));
-  background-size: 120px 120px, auto;
+    var(--img-tex-plaque),
+    linear-gradient(180deg, rgba(14, 16, 20, 0.55), rgba(5, 6, 9, 0.8));
+  background-size: 128px 128px, auto;
   background-clip: padding-box;
   border: 8px solid transparent;
   border-image: var(--img-chip-frame-stone) 14 stretch;
@@ -733,10 +742,13 @@ body {
   justify-content: flex-end;
 }
 
-/* Piso plano bajo el abanico: gradiente sutil que ancla la mano
-   (la niebla atmosférica vive en .game-screen::after). */
+/* Piso de madera bajo el abanico: tablones visibles en la franja superior
+   (donde el ojo las ve) y fundido a oscuro abajo, bajo las cartas. */
 .hand-area {
-  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.28));
+  background:
+    linear-gradient(180deg, rgba(5, 6, 8, 0.08), rgba(5, 6, 8, 0.55)),
+    var(--img-tex-hand);
+  background-size: auto, 176px 176px;
 }
 
 .hand-area > div {
@@ -754,13 +766,17 @@ body {
 }
 
 .table-cards {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem 1.1rem;
   min-height: 108px;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(13, 20, 30, 0.3), rgba(6, 10, 16, 0.36));
+  background:
+    linear-gradient(180deg, rgba(3, 2, 1, 0.5), rgba(4, 6, 9, 0.55)),
+    var(--img-tex-table);
+  background-size: auto, 160px 160px;
   background-clip: padding-box;
   border: 8px solid transparent;
   border-image: var(--img-chip-frame-stone) 14 stretch;
@@ -823,8 +839,15 @@ body {
 }
 
 .table-cards.drag-over {
-  background: rgba(159, 196, 232, 0.08);
   filter: drop-shadow(0 0 16px var(--accent-glow));
+}
+
+.table-cards.drag-over::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(159, 196, 232, 0.08);
+  pointer-events: none;
 }
 
 /* Resplandor en arco alrededor de la ventana gótica (drop-shadow respeta el
@@ -907,9 +930,9 @@ body {
 
 .overlay-card {
   background:
-    var(--tex-block),
+    var(--img-tex-panel),
     linear-gradient(180deg, var(--felt), var(--felt-dark));
-  background-size: 64px 32px, auto;
+  background-size: 128px 128px, auto;
   border: 18px solid transparent;
   border-image: var(--img-panel-frame-stone) 24 stretch;
   border-radius: 0;
