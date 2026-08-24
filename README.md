@@ -13,13 +13,13 @@ estándar de 52 cartas + Jokers**. Está pensada para jugarse en modo **solo
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 0 | Infraestructura del monorepo | ✅ Completa |
-| 1 | Motor de reglas (`packages/engine`) | ✅ Completa |
-| 2 | Web en modo solo (`apps/web`) | ✅ Completa |
-| 3 | Multijugador online 2-4p (`apps/server`) | ✅ Deployada |
-| 4 | V4: paleta Dark Fantasy, tablero a una pantalla, drag & drop y tabla persistente en Supabase | ✅ Deployada |
-| 5 | V5: autenticación (login/registro/recuperación), perfil de usuario con avatares de cartas, mejoras de accesibilidad y seguridad | ✅ Deployada |
-| 6 | V6: avatares con arte real de cartas, registro y errores del juego traducidos (es/en/pt) | ✅ Completa |
+| 8 | 29 avatares game-icons + marcos Kenney (botones, paneles, chips) | ✅ Deployada |
+| 9 | Kenney total — eliminación del skin gótico, toda la UI bajo placas Kenney | ✅ Deployada |
+| 10 | Sin banner — mano protagonista, hint sobre controles, overlay de Registro | ✅ Deployada |
+| 11 | Texturas Kenney reales (retro-textures-fantasy) + paleta piedra fría | ✅ Deployada |
+| 12 | Fix defensa — drag y botón "Cubrir daño" funcionan correctamente | ✅ Deployada |
+
+> Ver [UPDATES.md](UPDATES.md) para el historial completo (V0–V12).
 
 ## Jugar online
 
@@ -38,103 +38,10 @@ El modo multijugador está deployado en un solo servicio:
 > vuelve a deployar. La **tabla de posiciones**, en cambio, persiste en
 > Supabase (Postgres externo) y sobrevive a cold starts y redeploys.
 
-## Iteración V6
+## Iteraciones anteriores
 
-### Avatares con el arte real de las cartas
-
-- Los avatares de perfil usaban los ids genéricos del sprite (`#king`,
-  `#queen`…), que son **glifos de texto** de las esquinas, no ilustraciones:
-  se veían las letras J/Q/K/A en vez del dibujo.
-- Ahora `AVATAR_ART` recorta la **figura central real** de cartas del sprite
-  (♠K, ♥Q, ♣J, pipa de ♠A y Joker rojo) con `viewBox` medidos sobre
-  `svg-cards.svg`. Sin assets nuevos.
-- El badge de usuario ya no descentra nombres largos (ellipsis sobre el
-  texto, no sobre el botón).
-
-### i18n completo del juego
-
-- El motor emite el registro como **eventos estructurados**
-  (`LogEntry { key, args }`) en vez de strings en español; la web los
-  traduce e interpola según el idioma activo.
-- Los errores visibles al usuario usan **códigos estables**
-  (`GameError.code`, ~30 códigos): el server los reenvía en los acks y la
-  web los mapea a mensajes localizados (es/en/pt). Adiós errores crudos
-  en un solo idioma.
-
-### Endurecimiento de auth
-
-- Si faltan las variables de Supabase en el build, la pantalla de login
-  muestra un aviso claro localizado en vez de fallar con "Not configured".
-- Los errores de recuperación de contraseña también pasan por el
-  traductor de mensajes de Supabase Auth.
-
-## Iteración V5
-
-### Autenticación y perfil
-
-- **Login y registro** con Supabase Auth (email + contraseña).
-- **Recuperación de contraseña** por email.
-- **Verificación de email**: tras registrarse, se muestra un modal indicando
-  que se envió un enlace de confirmación.
-- **Perfil de usuario**: nombre, email, contraseña y avatar (5 opciones
-  basadas en cartas: Sota, Reina, Rey, Comodín y As).
-- **Avatar en el menú principal**: el badge de usuario muestra el avatar
-  seleccionado y es clicable para ir al perfil.
-
-### Mejoras de accesibilidad
-
-- Auth tabs con patrón ARIA (`role="tablist"`, `role="tab"`, `aria-selected`).
-- Health bar con `role="progressbar"` y atributos ARIA.
-- Overlays con Escape para cerrar.
-- Labels de inputs asociados con `htmlFor`/`id`.
-- Textos hardcodeados traducidos al sistema i18n (antes en español).
-- Contraste de texto mejorado para elementos pequeños.
-
-### Seguridad del server
-
-- **Rate limiting** en endpoints HTTP (scores: 10/min, rooms: 5/min).
-- **Security headers**: `X-Frame-Options`, `X-Content-Type-Options`,
-  `Strict-Transport-Security`, `Referrer-Policy`.
-- **SQL injection guard**: whitelist de nombres de tabla en Postgres.
-- **Graceful shutdown**: manejo de `SIGTERM`/`SIGINT` con cleanup de pools.
-- **Room TTL**: salas idle se limpian a los 30 min, partidas en curso a las
-  2h. Máximo 200 salas simultáneas.
-
-### Font loading optimizado
-
-- La fuente Alegreya se carga con `<link>` en `index.html` en vez de
-  `@import` en CSS (reduce round trips).
-- Preconnect hints para `fonts.googleapis.com` y `fonts.gstatic.com`.
-
-## Iteración V4
-
-Cambios visuales y de persistencia de la iteración anterior:
-
-- **Paleta Dark Fantasy fría**: extraída programáticamente de referencias de
-  arte (negros azul-noche, superficies de pizarra y acento "hielo pálido"),
-  reemplazando los tonos cálidos anteriores.
-- **Tablero compacto a una pantalla**: el tablero ocupa toda la pantalla sin
-  scroll (desktop), con tipografía ~20% más grande y cartas de mano más
-  grandes (104px). En pantallas bajas escala con `zoom`.
-- **Banner de paso**: el paso actual ("Paso 1/4") se muestra en grande sobre
-  la mano; un botón despliega la descripción y el registro de la partida.
-- **Golpe pesado**: los daños de 10+ muestran un número grande en rojo y
-  sacuden la carta del enemigo.
-- **Arrastrar para jugar**: seleccioná y arrastrá cartas sobre la mesa (o el
-  enemigo) para jugarlas, también en móvil. El clic y el botón "Jugar"
-  siguen disponibles.
-- **Tabla de posiciones persistente**: los resultados se guardan en una
-  base de datos PostgreSQL (Supabase) vía `DATABASE_URL`; si no hay base,
-  cae a un archivo JSON local.
-- **Dark Fantasy profundo**: análisis de las referencias de arte reveló la
-  firma real del género — profundidades casi negras, un resplandor central
-  (capa de hielo + velo de vela) detrás del enemigo, viñeta y niebla — más
-  formas de castillo en ruinas: almenas en los paneles, marcos de piedra
-  astillada (`border-image`), textura de bloques y grano. Todo con SVG
-  embebido, sin assets externos.
-- **Banner de paso corregido**: el panel desplegado ya no queda detrás de
-  las cartas (z-index + fondo sólido de piedra + recorte de la mano) y se
-  colapsa solo al jugar.
+Las secciones detalladas de V4 a V6 (Dark Fantasy, autenticación, i18n) se
+encuentran en [UPDATES.md](UPDATES.md).
 
 El motor implementa las reglas del juego con **IDs trazables `[R-x]`** que
 remiten a la fuente oficial (`docs/rules-source.md`, extracto del PDF de
@@ -171,7 +78,7 @@ pnpm lint             # ESLint de todos los paquetes
 pnpm build            # build de todos los paquetes
 pnpm --filter @regicide/web dev   # levantar el frontend en modo desarrollo
 pnpm --filter @regicide/server start   # server: web estática + Socket.io en :3001
-pnpm --filter @regicide/web test  # tests de la web (Testing Library)
+pnpm --filter @regicide/web test  # tests de la web (Testing Library, 40 tests)
 pnpm --filter @regicide/engine test  # tests del motor (254 tests, coverage)
 pnpm --filter @regicide/server test  # tests del server (vitest)
 ```
@@ -251,6 +158,8 @@ estándar:
   Recortes del pack "medieval-fantasy" en variante blanca.
 - **Marcos de UI** — [Kenney](https://www.kenney.nl) "Fantasy UI Borders"
   (CC0), teñidos programáticamente a la paleta del tema.
+- **Texturas de UI** — [Kenney](https://www.kenney.nl) "Retro Textures
+  Fantasy" (CC0), horneadas oscuras para la paleta del tema.
 - **Autor del proyecto** — [CuatroSeis](https://github.com/CuatroSeis)
 
 ---
