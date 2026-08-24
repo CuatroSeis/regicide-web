@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { canYield, effectiveAttack, gameSummary } from '@regicide/engine';
 import { useGame } from '../hooks/useGame';
-import type { BoardBanner } from '../components/GameBoard';
 import { GameBoard } from '../components/GameBoard';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -44,17 +43,16 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
     });
   }, [s.result, summary, setup]);
 
-  const banner =
+  const hint =
     s.phase === 'choose_action'
-      ? ({ title: t('stepLabel', { n: 1 }), description: t('phaseChoose') } as BoardBanner)
+      ? { text: t('phaseChoose') }
       : s.phase === 'suffer_damage'
-        ? ({
-            title: t('stepLabel', { n: 4 }),
-            description: t('phaseSuffer', {
+        ? {
+            text: t('phaseSuffer', {
               attack: effectiveAttack(s.enemy),
               value: game.selectionValue,
             }),
-          } as BoardBanner)
+          }
         : null;
 
   return (
@@ -71,7 +69,7 @@ export function GameScreen({ setup, onRestart, onHome, onViewLeaderboard }: Game
       jestersLeft={s.jestersLeft}
       lastDamageDealt={s.lastDamageDealt}
       log={s.log}
-      banner={banner}
+      hint={hint}
       selectedIds={game.selected}
       isMyTurn
       canPlay={game.canPlay}

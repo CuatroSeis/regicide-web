@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card, Enemy, PlayedCard } from '@regicide/engine';
 import { renderWithLang } from '../test/renderWithLang';
@@ -34,6 +35,7 @@ function baseProps() {
     jestersLeft: 2,
     lastDamageDealt: 0,
     log: [],
+    hint: null,
     banner: null,
     selectedIds: [],
     isMyTurn: true,
@@ -90,6 +92,33 @@ describe('GameBoard', () => {
   it('sin contador de jester (online) el botón no lleva "(N)"', () => {
     renderWithLang(<GameBoard {...baseProps()} showJester />);
     expect(screen.getByRole('button', { name: 'Jester' })).toBeInTheDocument();
+  });
+
+  it('muestra el hint del paso sobre los controles sin tapar la mano', () => {
+    renderWithLang(<GameBoard {...baseProps()} hint={{ text: 'Atacá al enemigo' }} />);
+    const hint = screen.getByText('Atacá al enemigo');
+    expect(hint).toHaveClass('action-hint');
+    expect(hint.closest('.controls')).not.toBeNull();
+    expect(screen.queryByText(/Detalles/)).not.toBeInTheDocument();
+  });
+
+  it('el botón Registro abre el overlay con el log y Escape lo cierra', async () => {
+    const user = userEvent.setup();
+    renderWithLang(
+      <GameBoard
+        {...baseProps()}
+        log={[
+          { key: 'play_cards', args: { player: 'Ana', count: 2, value: 9, damage: 9 } },
+          { key: 'yield', args: { player: 'Beto' } },
+        ]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Registro' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByText(/Ana juega 2 carta\(s\)/)).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('muestra el banner de error cuando hay mensaje', () => {

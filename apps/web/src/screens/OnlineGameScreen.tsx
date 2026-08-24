@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { effectiveAttack } from '@regicide/engine';
 import type { ScreenProps } from '../navigation';
 import type { OnlineSessionResult } from '../hooks/useOnlineGame';
-import type { BoardBanner } from '../components/GameBoard';
+import type { BoardHint } from '../components/GameBoard';
 import { GameBoard } from '../components/GameBoard';
 import { VictoryOverlay } from '../components/VictoryOverlay';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -64,20 +64,19 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
     }));
 
   const isMyTurnAndChoosing = s.isMyTurn && s.phase === 'choose_action';
-  let banner: BoardBanner | null = null;
+  let hint: BoardHint | null = null;
   if (s.phase === 'choose_action' || s.phase === 'suffer_damage') {
-    banner =
+    hint =
       isMyTurnAndChoosing || (s.phase === 'suffer_damage' && s.isMyTurn)
         ? {
-            title: t('stepLabel', { n: s.phase === 'suffer_damage' ? 4 : 1 }),
-            description: isMyTurnAndChoosing
+            text: isMyTurnAndChoosing
               ? t('phaseChoose')
               : t('phaseSuffer', {
                   attack: effectiveAttack(s.enemy),
                   value: online.selectionValue,
                 }),
           }
-        : { title: t('turnOf', { name: currentName }), waiting: true };
+        : { text: t('turnOf', { name: currentName }), waiting: true };
   }
 
   return (
@@ -94,7 +93,7 @@ export function OnlineGameScreen({ online, onNavigate }: OnlineGameScreenProps) 
       jestersLeft={s.jestersLeft}
       lastDamageDealt={s.lastDamageDealt}
       log={s.log}
-      banner={banner}
+      hint={hint}
       selectedIds={online.selected}
       isMyTurn={s.isMyTurn}
       canPlay={online.canPlay}

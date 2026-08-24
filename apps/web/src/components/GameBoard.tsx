@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Card, Enemy, LogEntry, Phase, PlayedCard } from '@regicide/engine';
 import { useCardDrag } from '../hooks/useCardDrag';
@@ -9,16 +9,15 @@ import { CardDragGhost } from './CardDragGhost';
 import { EnemyPanel } from './EnemyPanel';
 import { CardFace } from './CardFace';
 import { CardFan } from './CardFan';
-import { StepBanner } from './StepBanner';
 import { DeckChip } from './DeckCounters';
 import { CardTravel } from './CardTravel';
 import type { CardTravelSnapshot, CardTravelZones } from './CardTravel';
 import { useLanguage } from '../i18n/LanguageContext';
 
-/** Banner ya localizado por el screen (el título difiere entre solo y online). */
-export interface BoardBanner {
-  title: string;
-  description?: string;
+/** Hint ya localizado por el screen (difiere entre solo y online). */
+export interface BoardHint {
+  text: string;
+  /** Estado de espera (online): tenue. */
   waiting?: boolean;
 }
 
@@ -39,8 +38,8 @@ interface GameBoardProps {
   lastDamageDealt: number;
   log: readonly LogEntry[];
 
-  /** null → sin banner (fin de partida). */
-  banner: BoardBanner | null;
+  /** null → sin hint (fin de partida). */
+  hint?: BoardHint | null;
 
   selectedIds: string[];
   /** Solo: siempre true. Online: lo decide el server. */
@@ -92,7 +91,7 @@ export function GameBoard({
   jestersLeft,
   lastDamageDealt,
   log,
-  banner,
+  hint,
   selectedIds,
   isMyTurn,
   canPlay,
@@ -114,6 +113,16 @@ export function GameBoard({
 }: GameBoardProps) {
   const { t } = useLanguage();
   const isSuffering = phase === 'suffer_damage';
+  const [logOpen, setLogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!logOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLogOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [logOpen]);
 
   const deckRef = useRef<HTMLDivElement>(null);
   const castleRef = useRef<HTMLSpanElement>(null);
@@ -125,7 +134,7 @@ export function GameBoard({
   const handCardMetrics = handMetrics(handWidth, hand.length);
 
   const logTail = useMemo(
-    () => log.slice(-5).map((entry) => formatLogEntry(entry, t)),
+    () => log.map((entry) => formatLogEntry(entry, t)),
     [log, t],
   );
 
@@ -179,6 +188,14 @@ export function GameBoard({
           <div className="header-left">
             <button type="button" className="back-button" onClick={onMenu}>
               {t('menu')}
+            </button>
+            <button
+              type="button"
+              className="back-button"
+              aria-haspopup="dialog"
+              onClick={() => setLogOpen(true)}
+            >
+              {t('logTitle')}
             </button>
             <span className="meta">{headerMeta}</span>
           </div>
@@ -235,16 +252,6 @@ export function GameBoard({
 
         {error && <div className="error-banner">{error}</div>}
 
-        {banner && (
-          <StepBanner
-            key={`${turnNumber}-${phase}`}
-            title={banner.title}
-            description={banner.description}
-            waiting={banner.waiting}
-            log={logTail}
-          />
-        )}
-
         <div className="hand-area" ref={handRef}>
           <span className="zone-label">
             {t('hand', { hand: hand.length, max: maxHandSize })}
@@ -261,6 +268,11 @@ export function GameBoard({
         </div>
 
         <div className="controls">
+          {hint && (phase === 'choose_action' || isSuffering) && (
+            <p className={hint.waiting ? 'action-hint action-hint--wait' : 'action-hint'} aria-live="polite">
+              {hint.text}
+            </p>
+          )}
           {phase === 'choose_action' && isMyTurn && (
             <>
               <button type="button" className="menu-button" disabled={!canPlay} onClick={onPlay}>
@@ -302,6 +314,32 @@ export function GameBoard({
           x={drag.x}
           y={drag.y}
         />
+      )}
+
+      {logOpen && (
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="log-overlay-title">
+          <div className="overlay-card log-overlay-card">
+            <h2 className="overlay-title" id="log-overlay-title">
+              {t('logTitle')}
+            </h2>
+            <div className="log-overlay-list">
+              {logTail.length === 0 ? (
+                <p className="muted">{t('playEmptyHint')}</p>
+              ) : (
+                logTail.map((entry, index) => (
+                  <p key={index} className="log-line">
+                    {entry}
+                  </p>
+                ))
+              )}
+            </div>
+            <div className="overlay-actions">
+              <button type="button" className="menu-button" onClick={() => setLogOpen(false)}>
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
