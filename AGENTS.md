@@ -234,6 +234,33 @@ El enemy-panel creció ~30px con el marco nuevo y el drawer del StepBanner (ancl
 - build OK, tests web 34/34, typecheck/lint ×3.
 - CDP: home/perfil (29 avatares)/tablero jugando carta/reglas con frame Kenney/responsive 1280×713 con banner abierto (controles 3/3, Escape ✓). Píxeles: tintes stone/ice en las 5 vistas; fondo lateral del panel enemigo frío (máx R−B = 0 excluyendo el arte de la carta).
 
+## V10 (hecho)
+
+"Sin banner": el StepBanner se elimina por completo — la mano es protagonista junto con el enemigo (decisión de usuario).
+
+### StepBanner fuera
+- `apps/web/src/components/StepBanner.tsx` eliminado; `GameBoard` ya no renderiza el bloque entre mesa y mano. CSS `.step-banner*` fuera (~124 líneas), incluidos los fixes drawer-up de V9.
+- API: prop `banner: BoardBanner | null` → **`hint?: BoardHint | null`** (`{ text, waiting? }`). Se descarta la descripción larga del drawer (el detalle "cubrí N de M" ya se ve en el flujo de cubrir daño). Screens adaptan: solo pasa `phaseChoose`/`phaseSuffer`; online espera → `{ text: turnOf(name), waiting: true }`.
+
+### Hint sobre los controles
+- `.action-hint` dentro de `.controls` (`flex-basis:100%`, aria-live): texto chico dorado cuando jugás, tenue/cursiva esperando. Vive en la zona interactiva → jamás se superpone a la mano.
+
+### Registro accesible desde el header
+- Botón-chip "Registro" en `.header-left` (clase `back-button`) → overlay fijo reutilizando `.overlay/.overlay-card` (rol dialog, aria-modal, Escape cierra, scroll propio `.log-overlay-list` max-height 52dvh) con el log completo formateado.
+- i18n: fuera `stepLabel`/`detailsMore`/`detailsLess` ×3 idiomas; `logTitle` sirve como label del botón y título del overlay.
+
+### Mano protagonista + responsive
+- `.hand-area { min-height: clamp(150px,20dvh,210px) }` (≤760px h: clamp(120px,17dvh,160px)) — el abanico nunca se aplasta.
+- El enemy-panel es intrínsecamente alto (~450px CSS): los escalones de zoom quedaron **≤880h → 0.78 · ≤760h → 0.72** (antes 0.92/0.8). Verificado que controles quedan dentro del viewport y hitables.
+
+### Tests web (36 total)
+- `GameBoard.test.tsx`: props actualizadas (`hint: null`), nuevos: hint sobre controles (clase + ubicación, sin rastro de "Detalles"), overlay Registro (dialog aria-modal, log traducido vía LogEntry estructurada, Escape cierra). Helper: `renderWithLang` no expone `user` — usar `userEvent.setup()` directo.
+
+### Verificación V10
+- build OK, tests web 36/36, typecheck/lint ×3.
+- CDP headless (`/tmp/opencode/cdp_v10b.js`, login UI real: submit = botón **"Sign in"**, no el tab "Log in"): geo en 1280×813 / 1280×713 / 390×844 — controls bottom ≤ vh−8, hits 3/3, hint visible, overlay Registro abre/cierra con Escape. Píxeles: tintes stone/ice presentes en tablero y overlay (desktop+mobile).
+- Usuario de prueba CDP: `v10-tester@test.regicide.local` / `v10-pass-123` (creado vía admin API).
+
 
 
 ## Cómo verificar cambios
